@@ -1,14 +1,14 @@
 package com.melancholicbastard.handyasr.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
-import kotlinx.coroutines.flow.MutableSharedFlow
+import com.melancholicbastard.handyasr.domain.permission.CheckMicrophonePermissionUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-class RecorderViewModel : ViewModel() {
+class RecorderViewModel(
+    private val checkMicPermission: CheckMicrophonePermissionUseCase
+) : ViewModel() {
     private val _uiState = MutableStateFlow<RecordScreenUIState>(RecordScreenUIState.StartUIState)
     val uiState: StateFlow<RecordScreenUIState> = _uiState.asStateFlow()
 
@@ -39,3 +39,4 @@ sealed class RecordScreenUIState {
     object ProcessUIState: RecordScreenUIState()
     object RedactUIState: RecordScreenUIState()
 }
+
