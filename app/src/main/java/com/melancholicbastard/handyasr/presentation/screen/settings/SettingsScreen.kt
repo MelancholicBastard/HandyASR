@@ -1,4 +1,4 @@
-package com.melancholicbastard.handyasr.presentation.screen
+package com.melancholicbastard.handyasr.presentation.screen.settings
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column

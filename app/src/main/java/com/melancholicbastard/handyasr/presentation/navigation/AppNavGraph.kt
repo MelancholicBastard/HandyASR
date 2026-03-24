@@ -5,10 +5,10 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import com.melancholicbastard.handyasr.presentation.screen.HistoryScreen
-import com.melancholicbastard.handyasr.presentation.screen.RecorderScreen
+import com.melancholicbastard.handyasr.presentation.screen.history.HistoryScreen
+import com.melancholicbastard.handyasr.presentation.screen.recorder.RecorderScreen
 import com.melancholicbastard.handyasr.presentation.screen.Screen
-import com.melancholicbastard.handyasr.presentation.screen.SettingsScreen
+import com.melancholicbastard.handyasr.presentation.screen.settings.SettingsScreen
 
 @Composable
 fun AppNavGraph(
