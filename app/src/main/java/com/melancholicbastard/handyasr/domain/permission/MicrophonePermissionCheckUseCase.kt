@@ -1,6 +1,6 @@
 package com.melancholicbastard.handyasr.domain.permission
 
-abstract class CheckMicrophonePermissionUseCase(
+class MicrophonePermissionCheckUseCase(
     private val microphonePermissionChecker: MicrophonePermissionChecker
 ) {
     operator fun invoke(): Boolean = microphonePermissionChecker.isMicrophonePermissionGranted()

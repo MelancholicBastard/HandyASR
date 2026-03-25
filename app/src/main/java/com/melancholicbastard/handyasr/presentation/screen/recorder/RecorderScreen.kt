@@ -19,9 +19,12 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.melancholicbastard.handyasr.presentation.viewmodel.RecordScreenUIState
 import com.melancholicbastard.handyasr.presentation.viewmodel.RecorderViewModel
+import com.melancholicbastard.handyasr.presentation.viewmodel.RecorderViewModelFactory
 
 @Composable
-fun RecorderScreen(viewModel: RecorderViewModel = viewModel()) {
+fun RecorderScreen(viewModel: RecorderViewModel = viewModel(
+    factory = RecorderViewModelFactory()
+)) {
     val uiState by viewModel.uiState.collectAsState()
 
     Column(
