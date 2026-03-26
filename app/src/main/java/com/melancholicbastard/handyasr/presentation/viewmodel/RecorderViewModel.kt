@@ -1,5 +1,6 @@
 package com.melancholicbastard.handyasr.presentation.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.melancholicbastard.handyasr.domain.permission.MicrophonePermissionCheckUseCase
@@ -40,14 +41,24 @@ class RecorderViewModel(
         _uiState.value = RecordScreenUIState.IdleUIState
     }
 
-    fun acceptRecord() { _uiState.value = RecordScreenUIState.RedactUIState }
+    fun acceptRecord() {
+        _uiState.value = RecordScreenUIState.RedactUIState
+    }
+
+    init {
+        Log.d("RecorderVM", "created")
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        Log.d("RecorderVM", "onCleared")
+    }
 }
 
 sealed class RecordScreenUIState {
-    object IdleUIState: RecordScreenUIState()
-    object StartUIState: RecordScreenUIState()
-    object PauseUIState: RecordScreenUIState()
-    object ProcessUIState: RecordScreenUIState()
-    object RedactUIState: RecordScreenUIState()
+    object IdleUIState : RecordScreenUIState()
+    object StartUIState : RecordScreenUIState()
+    object PauseUIState : RecordScreenUIState()
+    object ProcessUIState : RecordScreenUIState()
+    object RedactUIState : RecordScreenUIState()
 }
-
