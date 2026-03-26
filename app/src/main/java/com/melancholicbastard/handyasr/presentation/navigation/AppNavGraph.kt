@@ -14,7 +14,8 @@ import com.melancholicbastard.handyasr.presentation.screen.settings.SettingsScre
 fun AppNavGraph(
     navController: NavHostController,
     modifier: Modifier = Modifier,
-    startDestination: String = Screen.Recorder.route
+    startDestination: String = Screen.Recorder.route,
+    requestPermission: () -> Unit
 ) {
     NavHost(
         navController = navController,
@@ -22,7 +23,7 @@ fun AppNavGraph(
         modifier = modifier
     ) {
         composable(Screen.Recorder.route) {
-            RecorderScreen()
+            RecorderScreen(requestPermission = requestPermission)
         }
         composable(Screen.History.route) {
             HistoryScreen()
