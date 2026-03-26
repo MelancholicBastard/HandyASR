@@ -1,9 +1,12 @@
 package com.melancholicbastard.handyasr.presentation
 
+import android.Manifest
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
@@ -19,6 +22,13 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        val microphonePermissionLauncher = registerForActivityResult(
+            ActivityResultContracts.RequestPermission()
+        ) { granted ->
+            if (!granted) Toast.makeText(this, "Разрешение не было предоставлено", Toast.LENGTH_SHORT).show()
+        }
+        val requestPermission = { microphonePermissionLauncher.launch(Manifest.permission.RECORD_AUDIO) }
+
         setContent {
             val navController = rememberNavController()
 
@@ -36,7 +46,9 @@ class MainActivity : ComponentActivity() {
                     AppNavGraph(
                         navController = navController,
                         modifier = Modifier.padding(innerPadding),
-                        startDestination = Screen.Recorder.route
+                        startDestination = Screen.Recorder.route,
+                        activity = this,
+                        requestPermission = requestPermission
                     )
                 }
             }

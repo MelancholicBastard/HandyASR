@@ -19,7 +19,10 @@ fun NavBackHandler(
         } else {
             if (currentRoute != null && currentRoute != startRoute) {
                 navController.navigate(startRoute) {
-                    popUpTo(startRoute) { inclusive = true }
+                    popUpTo(startRoute) {
+                        inclusive = true
+                        saveState = true // На всякий случай
+                    }
                     launchSingleTop = true
                 }
             } else {

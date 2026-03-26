@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CopilotDiffPersistence">
+    <option name="pendingDiffs">
+      <map>
+        <entry key="$PROJECT_DIR$/app/src/main/java/com/melancholicbastard/handyasr/presentation/AppNavGraph.kt">
+          <value>
+            <PendingDiffInfo>
+              <option name="filePath" value="$PROJECT_DIR$/app/src/main/java/com/melancholicbastard/handyasr/presentation/AppNavGraph.kt" />
+              <option name="updatedContent" value="package com.melancholicbastard.handyasr.presentation&#10;&#10;import androidx.compose.runtime.Composable&#10;import androidx.compose.ui.Modifier&#10;import androidx.navigation.NavHostController&#10;import androidx.navigation.compose.NavHost&#10;import androidx.navigation.compose.composable&#10;import com.melancholicbastard.handyasr.presentation.screen.HistoryScreen&#10;import com.melancholicbastard.handyasr.presentation.screen.RecorderScreen&#10;import com.melancholicbastard.handyasr.presentation.screen.Screen&#10;import com.melancholicbastard.handyasr.presentation.screen.SettingsScreen&#10;&#10;@Composable&#10;fun AppNavGraph(&#10;    navController: NavHostController,&#10;    modifier: Modifier = Modifier,&#10;    startDestination: String = Screen.Recorder.route&#10;) {&#10;    NavHost(&#10;        navController = navController,&#10;        startDestination = startDestination,&#10;        modifier = modifier&#10;    ) {&#10;        composable(Screen.Recorder.route) {&#10;            RecorderScreen()&#10;        }&#10;        composable(Screen.History.route) {&#10;            HistoryScreen()&#10;        }&#10;        composable(Screen.Settings.route) {&#10;            SettingsScreen()&#10;        }&#10;    }&#10;}&#10;" />
+            </PendingDiffInfo>
+          </value>
+        </entry>
+        <entry key="$PROJECT_DIR$/app/src/main/java/com/melancholicbastard/handyasr/presentation/NavigationHandlers.kt">
+          <value>
+            <PendingDiffInfo>
+              <option name="filePath" value="$PROJECT_DIR$/app/src/main/java/com/melancholicbastard/handyasr/presentation/NavigationHandlers.kt" />
+              <option name="updatedContent" value="package com.melancholicbastard.handyasr.presentation&#10;&#10;import androidx.activity.compose.BackHandler&#10;import androidx.compose.runtime.Composable&#10;import androidx.navigation.NavHostController&#10;&#10;/**&#10; * Centralized back button handler for navigation logic.&#10; *&#10; * @param navController Nav controller used for navigation operations&#10; * @param startRoute route of the start destination (e.g. Screen.Recorder.route)&#10; * @param onExit lambda that will be invoked when there's nothing to pop and current == startRoute&#10; */&#10;@Composable&#10;fun NavBackHandler(&#10;    navController: NavHostController,&#10;    startRoute: String,&#10;    onExit: () -&gt; Unit&#10;) {&#10;    BackHandler {&#10;        val currentRoute = navController.currentBackStackEntry?.destination?.route&#10;        val hasPrevious = navController.previousBackStackEntry != null&#10;&#10;        if (hasPrevious) {&#10;            navController.popBackStack()&#10;        } else {&#10;            if (currentRoute != null &amp;&amp; currentRoute != startRoute) {&#10;                navController.navigate(startRoute) {&#10;                    popUpTo(startRoute) { inclusive = true }&#10;                    launchSingleTop = true&#10;                }&#10;            } else {&#10;                onExit()&#10;            }&#10;        }&#10;    }&#10;}&#10;" />
+            </PendingDiffInfo>
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+</project>
