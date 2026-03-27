@@ -1,10 +1,12 @@
 package com.melancholicbastard.handyasr.presentation.screen.recorder
 
+import android.widget.ImageButton
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material3.Button
@@ -17,6 +19,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import com.melancholicbastard.handyasr.presentation.viewmodel.RecordScreenUIState
 import com.melancholicbastard.handyasr.presentation.viewmodel.RecorderViewModel
@@ -83,6 +86,11 @@ fun IdleView(
     Text(text = "Нажмите, чтобы начать запись")
     Spacer(modifier = Modifier.height(16.dp))
     IconButton(
+        onClick = {
+            viewModel.startRecording()
+        },
+    ) {}
+    Button(
         onClick = {
             viewModel.startRecording()
         }
