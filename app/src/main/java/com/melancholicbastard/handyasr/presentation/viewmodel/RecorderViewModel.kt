@@ -3,6 +3,7 @@ package com.melancholicbastard.handyasr.presentation.viewmodel
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.melancholicbastard.handyasr.data.AndroidAudioRecorderManager
 import com.melancholicbastard.handyasr.domain.permission.MicrophonePermissionCheckUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -40,7 +41,6 @@ class RecorderViewModel(
                 val elapsed = accumulatedPauseMs + now - startTimeMs
                 _elapsedMs.value = if (elapsed >= 0L) elapsed else 0L
                 delay(16L)
-                Log.d("Timer", "${_elapsedMs.value}")
             }
         }
     }
@@ -79,34 +79,55 @@ class RecorderViewModel(
         } else {
             _uiState.value = RecordScreenUIState.StartUIState
             startTimer()
+            viewModelScope.launch { AndroidAudioRecorderManager.startAudioRecording() }
         }
     }
 
     fun pauseRecording() {
         pauseTimer()
+        AndroidAudioRecorderManager.pauseAudioRecording()
         _uiState.value = RecordScreenUIState.PauseUIState
     }
 
     fun unpauseRecording() {
         resumeTimer()
-        Log.d("Timer", "isActive 111: ${tickerJob?.isActive}")
+        AndroidAudioRecorderManager.resumeAudioRecording()
         _uiState.value = RecordScreenUIState.StartUIState
     }
 
     fun rejectRecord() {
-        stopTimer()
-        _uiState.value = RecordScreenUIState.IdleUIState
+        viewModelScope.launch {
+            AndroidAudioRecorderManager.stopAudioRecording(delete = true)
+            stopTimer()
+            _uiState.value = RecordScreenUIState.IdleUIState
+        }
     }
 
     fun acceptRecord() {
-        stopTimer()
-        _uiState.value = RecordScreenUIState.IdleUIState
-//        _uiState.value = RecordScreenUIState.RedactUIState
+        viewModelScope.launch {
+            val file = AndroidAudioRecorderManager.stopAudioRecording(delete = false)
+            stopTimer()
+            _uiState.value = RecordScreenUIState.IdleUIState
+            if (file != null) {
+                file.delete()
+                Log.d("AudioRec", "acceptRecord file=${file.absolutePath} size=${file.length()}")
+            } else {
+                Log.w("AudioRec", "acceptRecord: no file returned")
+            }
+//            _uiState.value = RecordScreenUIState.RedactUIState
+        }
     }
 
     override fun onCleared() {
         super.onCleared()
         tickerJob?.cancel()
+        viewModelScope.launch {
+            try {
+                AndroidAudioRecorderManager.stopAudioRecording(delete = true)
+            } catch (_: Throwable) {
+                //
+            }
+        }
     }
 }
 
