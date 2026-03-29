@@ -3,8 +3,12 @@ package com.melancholicbastard.handyasr.presentation.viewmodel
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.melancholicbastard.handyasr.data.AndroidAudioRecorderManager
 import com.melancholicbastard.handyasr.domain.permission.MicrophonePermissionCheckUseCase
+import com.melancholicbastard.handyasr.domain.recording.AcceptRecordingUseCase
+import com.melancholicbastard.handyasr.domain.recording.PauseRecordingUseCase
+import com.melancholicbastard.handyasr.domain.recording.RejectRecordingUseCase
+import com.melancholicbastard.handyasr.domain.recording.StartRecordingUseCase
+import com.melancholicbastard.handyasr.domain.recording.UnpauseRecordingUseCase
 import com.melancholicbastard.handyasr.presentation.AndroidTimerManager
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,7 +21,12 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class RecorderViewModel(
-    private val checkMicPermission: MicrophonePermissionCheckUseCase
+    private val checkMicPermission: MicrophonePermissionCheckUseCase,
+    private val startRec: StartRecordingUseCase,
+    private val pauseRec: PauseRecordingUseCase,
+    private val unpauseRec: UnpauseRecordingUseCase,
+    private val rejectRec: RejectRecordingUseCase,
+    private val acceptRec: AcceptRecordingUseCase
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<RecordScreenUIState>(RecordScreenUIState.IdleUIState)
     val uiState: StateFlow<RecordScreenUIState> = _uiState.asStateFlow()
@@ -37,53 +46,53 @@ class RecorderViewModel(
             viewModelScope.launch { _requestForPermission.emit(Unit) }
         } else {
             _uiState.value = RecordScreenUIState.StartUIState
-            AndroidTimerManager.startTimer()
-            viewModelScope.launch { AndroidAudioRecorderManager.startAudioRecording() }
+            viewModelScope.launch {
+                startRec()
+            }
+//            AndroidTimerManager.startTimer()
+//            viewModelScope.launch { AndroidAudioRecorderManager.startAudioRecording() }
         }
     }
 
     fun pauseRecording() {
-        AndroidTimerManager.pauseTimer()
-        AndroidAudioRecorderManager.pauseAudioRecording()
+        pauseRec()
+//        AndroidTimerManager.pauseTimer()
+//        AndroidAudioRecorderManager.pauseAudioRecording()
         _uiState.value = RecordScreenUIState.PauseUIState
     }
 
     fun unpauseRecording() {
-        AndroidTimerManager.resumeTimer()
-        AndroidAudioRecorderManager.resumeAudioRecording()
+        unpauseRec()
+//        AndroidTimerManager.resumeTimer()
+//        AndroidAudioRecorderManager.resumeAudioRecording()
         _uiState.value = RecordScreenUIState.StartUIState
     }
 
     fun rejectRecord() {
         viewModelScope.launch {
-            AndroidAudioRecorderManager.stopAudioRecording(delete = true)
-            AndroidTimerManager.stopTimer()
+            rejectRec()
+//            AndroidAudioRecorderManager.stopAudioRecording(delete = true)
+//            AndroidTimerManager.stopTimer()
             _uiState.value = RecordScreenUIState.IdleUIState
         }
     }
 
     fun acceptRecord() {
         viewModelScope.launch {
-            val file = AndroidAudioRecorderManager.stopAudioRecording(delete = false)
-            AndroidTimerManager.stopTimer()
+            val file = acceptRec()
+//            val file = AndroidAudioRecorderManager.stopAudioRecording(delete = false)
+//            AndroidTimerManager.stopTimer()
             _uiState.value = RecordScreenUIState.IdleUIState
-            if (file != null) {
-                file.delete()
-                Log.d("AudioRec", "acceptRecord file=${file.absolutePath} size=${file.length()}")
-            } else {
-                Log.w("AudioRec", "acceptRecord: no file returned")
-            }
 //            _uiState.value = RecordScreenUIState.RedactUIState
         }
     }
 
     override fun onCleared() {
-        super.onCleared()
         viewModelScope.launch {
-            try {
-                AndroidAudioRecorderManager.stopAudioRecording(delete = true)
-            } catch (_: Throwable) {}
+            rejectRec()
+//            AndroidAudioRecorderManager.stopAudioRecording(delete = true)
         }
+        super.onCleared()
     }
 }
 

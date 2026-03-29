@@ -5,7 +5,9 @@ import android.media.AudioRecord
 import android.media.MediaPlayer
 import android.media.MediaRecorder
 import android.util.Log
+import com.melancholicbastard.handyasr.data.permission.AndroidMicrophonePermissionChecker
 import com.melancholicbastard.handyasr.domain.AudioRecorderManager
+import com.melancholicbastard.handyasr.domain.permission.MicrophonePermissionCheckUseCase
 import com.melancholicbastard.handyasr.presentation.App
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -21,6 +23,9 @@ import java.io.RandomAccessFile
 
 object AndroidAudioRecorderManager : AudioRecorderManager {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val microphonePermissionCheckUseCase = MicrophonePermissionCheckUseCase(
+        AndroidMicrophonePermissionChecker(App.instance)
+    )
 
     private var audioRecorder: AudioRecord? = null
     private var audioFile: File? = null
@@ -31,6 +36,10 @@ object AndroidAudioRecorderManager : AudioRecorderManager {
     private var isRecording: Boolean = false
 
     override suspend fun startAudioRecording() {
+        if (!microphonePermissionCheckUseCase()) {
+            Log.e("AudioRecManager", "Audio recording permission not granted")
+            return
+        }
         try {
             val context = App.instance
             val tmp = withContext(Dispatchers.IO) {
