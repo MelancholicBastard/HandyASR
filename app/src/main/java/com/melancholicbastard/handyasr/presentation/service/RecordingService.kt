@@ -6,6 +6,7 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.os.Build
 import android.util.Log
 import androidx.compose.ui.graphics.Color
@@ -29,6 +30,7 @@ import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancelChildren
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.launch
 
@@ -76,6 +78,7 @@ class RecordingService(
             .setSmallIcon(android.R.drawable.ic_btn_speak_now)
             .setOngoing(true)
             .setColor(Color.Blue.toArgb())
+            .setOnlyAlertOnce(true)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -93,6 +96,7 @@ class RecordingService(
     private fun acceptRecording() {
         updateRuntimeState(RecordingRuntimeState.PROCESSING)
         scope.launch {
+            delay(2000L)
             runCatching { acceptRecUseCase() }
                 .onSuccess { file ->
                     Log.d(TAG, "Accepted file: ${file.absolutePath}")
@@ -153,7 +157,7 @@ class RecordingService(
                     val minutes = time / 60_000
                     val text = String.format("%02d:%02d", minutes, seconds)
                     notificationBuilder.setContentText(text)
-                    startForeground(NOTIFICATION_ID, notificationBuilder.build())
+                    startForegroundService()
                 }
         }
 
@@ -170,6 +174,14 @@ class RecordingService(
 
     private fun updateRuntimeState(newState: RecordingRuntimeState) {
         scope.launch { RecordingServiceBridge.updateState(newState) }
+    }
+
+    private fun startForegroundService() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            startForeground(NOTIFICATION_ID, notificationBuilder.build(), ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE)
+        } else {
+            startForeground(NOTIFICATION_ID, notificationBuilder.build())
+        }
     }
 
     private fun stopServiceAndResetState() {
@@ -213,7 +225,7 @@ class RecordingService(
             createActionPendingIntent(ACTION_REJECT, 103)
         )
 
-        startForeground(NOTIFICATION_ID, notificationBuilder.build())
+        startForegroundService()
     }
 
     private fun createActionPendingIntent(action: String, requestCode: Int): PendingIntent {

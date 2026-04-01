@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
@@ -14,7 +15,9 @@ import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -46,7 +49,7 @@ fun RecorderScreen(
             )
             RecordScreenUIState.StartUIState -> RecordingView(viewModel)
             RecordScreenUIState.PauseUIState -> PauseView(viewModel)
-            RecordScreenUIState.ProcessUIState -> ProcessView(viewModel)
+            RecordScreenUIState.ProcessUIState -> ProcessView()
             RecordScreenUIState.RedactUIState -> RedactView(viewModel)
         }
     }
@@ -59,8 +62,10 @@ fun RedactView(viewModel: RecorderViewModel) {
 }
 
 @Composable
-fun ProcessView(viewModel: RecorderViewModel) {
-    Text("Test")
+fun ProcessView() {
+    CircularProgressIndicator(modifier = Modifier.size(48.dp), strokeWidth = 4.dp)
+    Spacer(modifier = Modifier.height(12.dp))
+    Text(text = "Обработка...", style = MaterialTheme.typography.bodySmall)
 }
 
 @Composable
