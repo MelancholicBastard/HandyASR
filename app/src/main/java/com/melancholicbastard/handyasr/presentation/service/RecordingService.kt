@@ -1,6 +1,5 @@
 package com.melancholicbastard.handyasr.presentation.service
 
-import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -9,33 +8,46 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.util.Log
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Mic
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.core.app.NotificationCompat
 import com.melancholicbastard.handyasr.data.recording.AndroidAcceptRecording
 import com.melancholicbastard.handyasr.data.recording.AndroidPauseRecording
 import com.melancholicbastard.handyasr.data.recording.AndroidRejectRecording
 import com.melancholicbastard.handyasr.data.recording.AndroidStartRecording
 import com.melancholicbastard.handyasr.data.recording.AndroidUnpauseRecording
-import com.melancholicbastard.handyasr.domain.recordingcontrol.RecordingRuntimeState
 import com.melancholicbastard.handyasr.domain.recording.AcceptRecordingUseCase
 import com.melancholicbastard.handyasr.domain.recording.PauseRecordingUseCase
 import com.melancholicbastard.handyasr.domain.recording.RejectRecordingUseCase
 import com.melancholicbastard.handyasr.domain.recording.StartRecordingUseCase
 import com.melancholicbastard.handyasr.domain.recording.UnpauseRecordingUseCase
+import com.melancholicbastard.handyasr.domain.recordingcontrol.RecordingRuntimeState
+import com.melancholicbastard.handyasr.presentation.AndroidTimerManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancelChildren
+import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.launch
 
 class RecordingService(
-    private val startRecUseCase : StartRecordingUseCase = StartRecordingUseCase(AndroidStartRecording()),
-    private val pauseRecUseCase : PauseRecordingUseCase = PauseRecordingUseCase(AndroidPauseRecording()),
-    private val unpauseRecUseCase : UnpauseRecordingUseCase = UnpauseRecordingUseCase(AndroidUnpauseRecording()),
-    private val rejectRecUseCase : RejectRecordingUseCase = RejectRecordingUseCase(AndroidRejectRecording()),
-    private val acceptRecUseCase : AcceptRecordingUseCase = AcceptRecordingUseCase(AndroidAcceptRecording())
+    private val startRecUseCase: StartRecordingUseCase = StartRecordingUseCase(
+        AndroidStartRecording()
+    ),
+    private val pauseRecUseCase: PauseRecordingUseCase = PauseRecordingUseCase(
+        AndroidPauseRecording()
+    ),
+    private val unpauseRecUseCase: UnpauseRecordingUseCase = UnpauseRecordingUseCase(
+        AndroidUnpauseRecording()
+    ),
+    private val rejectRecUseCase: RejectRecordingUseCase = RejectRecordingUseCase(
+        AndroidRejectRecording()
+    ),
+    private val acceptRecUseCase: AcceptRecordingUseCase = AcceptRecordingUseCase(
+        AndroidAcceptRecording()
+    )
 ) : Service() {
     companion object {
         private const val TAG = "RecordingService"
@@ -45,15 +57,26 @@ class RecordingService(
         const val ACTION_PAUSE = "com.melancholicbastard.handyasr.action.PAUSE"
         const val ACTION_UNPAUSE = "com.melancholicbastard.handyasr.action.UNPAUSE"
         const val ACTION_ACCEPT = "com.melancholicbastard.handyasr.action.ACCEPT"
-        const val ACTION_REJECT= "com.melancholicbastard.handyasr.action.REJECT"
+        const val ACTION_REJECT = "com.melancholicbastard.handyasr.action.REJECT"
     }
 
-    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private val notificationManager by lazy {
         getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
     }
+    private lateinit var notificationBuilder: NotificationCompat.Builder
+    private var elapsedCollectorJob: Job? = null
 
     override fun onBind(intent: Intent?) = null
+
+    override fun onCreate() {
+        super.onCreate()
+        notificationBuilder = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentText("00:00")
+            .setSmallIcon(android.R.drawable.ic_btn_speak_now)
+            .setOngoing(true)
+            .setColor(Color.Blue.toArgb())
+    }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
@@ -116,9 +139,24 @@ class RecordingService(
         }
     }
 
+    @OptIn(FlowPreview::class)
     fun startRecording() {
         createNotificationChannelIfNeeded()
-        startForeground(NOTIFICATION_ID, buildNotification(RecordingRuntimeState.RECORDING))
+        updateNotification(RecordingRuntimeState.RECORDING)
+
+        elapsedCollectorJob?.cancel()
+        elapsedCollectorJob = scope.launch {
+            AndroidTimerManager.elapsedMs
+                .sample(990)
+                .collect { time ->
+                    val seconds = (time / 1000) % 60
+                    val minutes = time / 60_000
+                    val text = String.format("%02d:%02d", minutes, seconds)
+                    notificationBuilder.setContentText(text)
+                    startForeground(NOTIFICATION_ID, notificationBuilder.build())
+                }
+        }
+
         updateRuntimeState(RecordingRuntimeState.RECORDING)
 
         scope.launch {
@@ -136,37 +174,46 @@ class RecordingService(
 
     private fun stopServiceAndResetState() {
         updateRuntimeState(RecordingRuntimeState.IDLE)
+        elapsedCollectorJob?.cancel()
+        elapsedCollectorJob = null
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
 
     private fun updateNotification(state: RecordingRuntimeState) {
-        notificationManager.notify(NOTIFICATION_ID, buildNotification(state))
-    }
-
-    private fun buildNotification(state: RecordingRuntimeState): Notification {
-        val toggleAction = if (state == RecordingRuntimeState.PAUSED) ACTION_UNPAUSE else ACTION_PAUSE
-        val toggleTitle = if (state == RecordingRuntimeState.PAUSED) "Resume" else "Pause"
-        val contentText = if (state == RecordingRuntimeState.PAUSED) {
-            "Recording paused"
+        if (state == RecordingRuntimeState.RECORDING) {
+            notificationBuilder.setContentTitle("Recording in progress")
         } else {
-            "Recording in progress"
+            notificationBuilder.setContentTitle("Recording paused")
         }
+        notificationBuilder.clearActions()
+
+        val toggleAction =
+            if (state == RecordingRuntimeState.PAUSED) ACTION_UNPAUSE else ACTION_PAUSE
+        val toggleTitle = if (state == RecordingRuntimeState.PAUSED) "Resume" else "Pause"
         val toggleIcon = if (state == RecordingRuntimeState.PAUSED) {
             android.R.drawable.ic_media_play
         } else {
             android.R.drawable.ic_media_pause
         }
 
-        return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Recording")
-            .setContentText(contentText)
-            .setSmallIcon(android.R.drawable.ic_btn_speak_now)
-            .setOngoing(true)
-            .addAction(toggleIcon, toggleTitle, createActionPendingIntent(toggleAction, 101))
-            .addAction(android.R.drawable.ic_menu_add, "Accept", createActionPendingIntent(ACTION_ACCEPT, 102))
-            .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Reject", createActionPendingIntent(ACTION_REJECT, 103))
-            .build()
+        notificationBuilder.addAction(
+            toggleIcon,
+            toggleTitle,
+            createActionPendingIntent(toggleAction, 101)
+        )
+        notificationBuilder.addAction(
+            android.R.drawable.ic_menu_add,
+            "Accept",
+            createActionPendingIntent(ACTION_ACCEPT, 102)
+        )
+        notificationBuilder.addAction(
+            android.R.drawable.ic_menu_close_clear_cancel,
+            "Reject",
+            createActionPendingIntent(ACTION_REJECT, 103)
+        )
+
+        startForeground(NOTIFICATION_ID, notificationBuilder.build())
     }
 
     private fun createActionPendingIntent(action: String, requestCode: Int): PendingIntent {
@@ -187,9 +234,11 @@ class RecordingService(
     }
 
     override fun onDestroy() {
-        scope.coroutineContext.cancelChildren()
         updateRuntimeState(RecordingRuntimeState.IDLE)
+        elapsedCollectorJob?.cancel()
+        elapsedCollectorJob = null
         stopForeground(STOP_FOREGROUND_REMOVE)
+        scope.coroutineContext.cancelChildren()
         super.onDestroy()
     }
 }
