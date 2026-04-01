@@ -60,7 +60,7 @@ fun RedactView(viewModel: RecorderViewModel) {
 
 @Composable
 fun ProcessView(viewModel: RecorderViewModel) {
-    TODO("Not yet implemented")
+    Text("Test")
 }
 
 @Composable
