@@ -6,11 +6,11 @@ import androidx.core.content.ContextCompat
 import com.melancholicbastard.handyasr.domain.permission.MicrophonePermissionChecker
 
 class AndroidMicrophonePermissionChecker(
-    private val appContex: Context
+    private val appContext: Context
 ) : MicrophonePermissionChecker {
     override fun isMicrophonePermissionGranted(): Boolean =
         ContextCompat.checkSelfPermission(
-            appContex,
+            appContext,
             android.Manifest.permission.RECORD_AUDIO
         ) == PackageManager.PERMISSION_GRANTED
 }

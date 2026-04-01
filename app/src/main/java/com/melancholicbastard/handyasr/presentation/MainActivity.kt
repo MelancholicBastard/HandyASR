@@ -32,7 +32,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             val navController = rememberNavController()
 
-            HandyASRTheme {
+            HandyASRTheme(dynamicColor = false) {
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
                     bottomBar = { NavBottomBar(navController = navController) }
