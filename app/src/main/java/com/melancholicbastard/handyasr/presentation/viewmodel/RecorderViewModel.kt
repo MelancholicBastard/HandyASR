@@ -1,6 +1,5 @@
 package com.melancholicbastard.handyasr.presentation.viewmodel
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.melancholicbastard.handyasr.domain.permission.MicrophonePermissionCheckUseCase
@@ -19,7 +18,6 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import java.io.File
 
 class RecorderViewModel(
     private val checkMicPermission: MicrophonePermissionCheckUseCase,
@@ -33,8 +31,8 @@ class RecorderViewModel(
     private val _requestForPermission = MutableSharedFlow<Unit>(replay = 0)
     val requestForPermission: SharedFlow<Unit> = _requestForPermission.asSharedFlow()
 
-    private val _audioFile = MutableStateFlow<File?>(null)
-    val audioFile: StateFlow<File?> = _audioFile.asStateFlow()
+    private val _audioFilePath = MutableStateFlow<String?>(null)
+    val audioFilePath: StateFlow<String?> = _audioFilePath.asStateFlow()
 
     val elapsedMs: StateFlow<Long> = AndroidTimerManager.elapsedMs
         .stateIn(
@@ -50,8 +48,8 @@ class RecorderViewModel(
             }
         }
         viewModelScope.launch {
-            observeRecordingResult().collect { file ->
-                _audioFile.value = file
+            observeRecordingResult().collect { filePath ->
+                _audioFilePath.value = filePath
             }
         }
     }

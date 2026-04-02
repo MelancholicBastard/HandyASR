@@ -26,12 +26,11 @@ import com.melancholicbastard.handyasr.domain.recordingcontrol.RecordingRuntimeS
 import com.melancholicbastard.handyasr.presentation.AndroidTimerManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancelChildren
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.sample
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 class RecordingService(
@@ -96,10 +95,9 @@ class RecordingService(
     private fun acceptRecording() {
         updateRuntimeState(RecordingRuntimeState.PROCESSING)
         scope.launch {
-            delay(2000L)
             runCatching { acceptRecUseCase() }
                 .onSuccess { file ->
-                    Log.d(TAG, "Accepted file: ${file.absolutePath}")
+                    Log.d(TAG, "Accepted file: ${file}")
                     RecordingServiceBridge.updateResult(file)
                     stopServiceAndResetState()
                 }
@@ -143,7 +141,6 @@ class RecordingService(
         }
     }
 
-    @OptIn(FlowPreview::class)
     fun startRecording() {
         createNotificationChannelIfNeeded()
         updateNotification(RecordingRuntimeState.RECORDING)
@@ -151,11 +148,13 @@ class RecordingService(
         elapsedCollectorJob?.cancel()
         elapsedCollectorJob = scope.launch {
             AndroidTimerManager.elapsedMs
-                .sample(990)
-                .collect { time ->
+                .map { time ->
                     val seconds = (time / 1000) % 60
                     val minutes = time / 60_000
-                    val text = String.format("%02d:%02d", minutes, seconds)
+                    String.format("%02d:%02d", minutes, seconds)
+                }
+                .distinctUntilChanged()
+                .collect { text ->
                     notificationBuilder.setContentText(text)
                     startForegroundService()
                 }
@@ -178,7 +177,11 @@ class RecordingService(
 
     private fun startForegroundService() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            startForeground(NOTIFICATION_ID, notificationBuilder.build(), ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE)
+            startForeground(
+                NOTIFICATION_ID,
+                notificationBuilder.build(),
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+            )
         } else {
             startForeground(NOTIFICATION_ID, notificationBuilder.build())
         }

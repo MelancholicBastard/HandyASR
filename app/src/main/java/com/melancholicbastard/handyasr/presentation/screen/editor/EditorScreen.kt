@@ -1,4 +1,4 @@
-package com.melancholicbastard.handyasr.presentation.screen.history
+package com.melancholicbastard.handyasr.presentation.screen.editor
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -8,33 +8,31 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import com.melancholicbastard.handyasr.presentation.viewmodel.HistoryViewModel
+import com.melancholicbastard.handyasr.presentation.viewmodel.EditViewModel
 
 @Composable
-fun HistoryScreen(
-    viewModel: HistoryViewModel,
-    onOpenEditorForExistingRecord: () -> Unit
+fun EditorScreen(
+    viewModel: EditViewModel,
+    onBackClick: () -> Unit
 ) {
-    val counterState by viewModel.integer.collectAsState()
     Column(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text(text = "Экран записей")
+        val counterState by viewModel.integer.collectAsState()
+        Text(text = if (viewModel.isNewRecord) "Новая запись" else "Редактирование записи")
         Button(
             onClick = {
-                viewModel.incr()
+                viewModel.decr()
             }
         ) {
             Text(text = "${counterState}")
         }
-        Button(onClick = onOpenEditorForExistingRecord) {
-            Text(text = "Открыть редактор (редактирование)")
+        Button(onClick = onBackClick) {
+            Text(text = "Назад")
         }
     }
 }

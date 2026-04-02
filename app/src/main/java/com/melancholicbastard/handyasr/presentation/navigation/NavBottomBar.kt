@@ -17,19 +17,29 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.melancholicbastard.handyasr.presentation.screen.Screen
 
-
 @Composable
 fun NavBottomBar(navController: NavHostController) {
     val items = listOf(Screen.Recorder, Screen.History, Screen.Settings)
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
+    val activeTabRoute = when {
+        currentRoute == Screen.Recorder.route -> Screen.Recorder.route
+        currentRoute == Screen.History.route -> Screen.History.route
+        currentRoute == Screen.Settings.route -> Screen.Settings.route
+        currentRoute?.startsWith(Screen.Editor.route) == true -> {
+            val isNew = navBackStackEntry?.arguments?.getBoolean(Screen.Editor.IS_NEW_ARG) ?: true
+            if (isNew) Screen.Recorder.route else Screen.History.route
+        }
+        else -> null
+    }
+
     NavigationBar {
         items.forEach { screen ->
             val iconVector = when (screen) {
                 Screen.Recorder -> Icons.Default.Mic
                 Screen.History -> Icons.Default.CalendarMonth
-                Screen.Settings -> Icons.Default.Settings
+                else -> Icons.Default.Settings
             }
 
             NavigationBarItem(
@@ -41,12 +51,15 @@ fun NavBottomBar(navController: NavHostController) {
                     )
                 },
                 label = { Text(screen.label) },
-                selected = currentRoute == screen.route,
+                selected = activeTabRoute == screen.route,
                 onClick = {
-                    if (currentRoute != screen.route) {
+                    if (activeTabRoute != screen.route) {
                         navController.navigate(screen.route) {
-                            popUpTo(screen.route) { inclusive = true }
+                            popUpTo(navController.graph.startDestinationId) {
+                                saveState = true
+                            }
                             launchSingleTop = true
+                            restoreState = true
                         }
                     }
                 }
