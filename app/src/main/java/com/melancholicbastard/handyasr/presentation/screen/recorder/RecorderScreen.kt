@@ -41,7 +41,6 @@ import com.melancholicbastard.handyasr.presentation.viewmodel.RecorderViewModel
 fun RecorderScreen(
     viewModel: RecorderViewModel,
     requestPermission: () -> Unit,
-    onOpenEditorForNewRecord: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
@@ -53,21 +52,13 @@ fun RecorderScreen(
         when (uiState) {
             RecordScreenUIState.IdleUIState -> IdleView(
                 viewModel,
-                requestPermission,
-                onOpenEditorForNewRecord
+                requestPermission
             )
             RecordScreenUIState.StartUIState -> RecordingView(viewModel)
             RecordScreenUIState.PauseUIState -> PauseView(viewModel)
             RecordScreenUIState.ProcessUIState -> ProcessView()
-            RecordScreenUIState.RedactUIState -> RedactView(viewModel)
         }
     }
-}
-
-@Composable
-fun RedactView(viewModel: RecorderViewModel) {
-
-    TODO("Not yet implemented")
 }
 
 @Composable
@@ -130,8 +121,7 @@ fun RecordingView(viewModel: RecorderViewModel) {
 @Composable
 fun IdleView(
     viewModel: RecorderViewModel,
-    requestPermission: () -> Unit,
-    onOpenEditorForNewRecord: () -> Unit
+    requestPermission: () -> Unit
 ) {
     val requestForPermission = viewModel.requestForPermission
 
@@ -152,10 +142,6 @@ fun IdleView(
             imageVector = Icons.Default.Mic,
             contentDescription = "Start recording"
         )
-    }
-    Spacer(modifier = Modifier.height(16.dp))
-    Button(onClick = onOpenEditorForNewRecord) {
-        Text(text = "Открыть редактор (новая запись)")
     }
 }
 

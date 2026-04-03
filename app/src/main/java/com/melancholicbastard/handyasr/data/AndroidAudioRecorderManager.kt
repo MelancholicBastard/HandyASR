@@ -1,8 +1,8 @@
 package com.melancholicbastard.handyasr.data
 
+import android.content.Context
 import android.media.AudioFormat
 import android.media.AudioRecord
-import android.media.MediaPlayer
 import android.media.MediaRecorder
 import android.util.Log
 import com.melancholicbastard.handyasr.data.permission.AndroidMicrophonePermissionChecker
@@ -43,6 +43,10 @@ object AndroidAudioRecorderManager : AudioRecorderManager {
         }
         try {
             val context = App.instance
+            withContext(Dispatchers.IO) {
+                clearCacheRecordFiles(context)
+            }
+
             val tmp = withContext(Dispatchers.IO) {
                 File.createTempFile("handyasr_record_", ".wav", context.cacheDir)
             }
@@ -52,11 +56,12 @@ object AndroidAudioRecorderManager : AudioRecorderManager {
             val channelConfig = AudioFormat.CHANNEL_IN_MONO
             val audioFormat = AudioFormat.ENCODING_PCM_16BIT
             val minBufSize = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat)
-            val bufferSize = if (minBufSize == AudioRecord.ERROR || minBufSize == AudioRecord.ERROR_BAD_VALUE) {
-                sampleRate * 2
-            } else {
-                minBufSize * 2
-            }
+            val bufferSize =
+                if (minBufSize == AudioRecord.ERROR || minBufSize == AudioRecord.ERROR_BAD_VALUE) {
+                    sampleRate * 2
+                } else {
+                    minBufSize * 2
+                }
 
             try {
                 audioRecorder = AudioRecord(
@@ -107,49 +112,43 @@ object AndroidAudioRecorderManager : AudioRecorderManager {
             }
             audioRecorder = null
 
-            try {
-                audioRecordingJob?.cancel()
-                audioRecordingJob?.join()
-            } catch (_: Throwable) {}
+            audioRecordingJob?.cancel()
+            audioRecordingJob?.join()
             audioRecordingJob = null
 
-            audioFile
             if (audioFile == null) {
                 Log.e(TAG, "no audio file to process")
                 return null
             }
 
             if (!delete) {
-                val context = App.instance
-                val recordingsDir = File(context.filesDir, "recordings")
-                Log.d(TAG, "${recordingsDir.absolutePath}")
-                if (!recordingsDir.exists()) {
-                    recordingsDir.mkdirs()
-                    Log.e(TAG, "There is no directory on path: ${recordingsDir.absolutePath}")
-                }
-                val destFile = File(recordingsDir, "rec_${System.currentTimeMillis()}.wav")
-
-                try {
-                    audioFile?.copyTo(destFile, overwrite = true)
-                } catch (t: Throwable) {
-                    Log.e(TAG, "failed to copy file into directory", t)
-                }
-
-                try {
-                    playFile(destFile)
-                } catch (e: Exception) {
-                    Log.e(TAG, "play error", e)
-                }
-
-                return destFile.absolutePath
+                return audioFile!!.absolutePath
+            } else {
+                if (audioFile?.exists() == true) audioFile?.delete()
+                audioFile = null
             }
         } catch (e: Exception) {
             Log.e(TAG, "stop error", e)
-        } finally {
-            if (audioFile?.exists() == true) audioFile?.delete()
-            audioFile = null
         }
         return null
+    }
+
+    private fun clearCacheRecordFiles(context: Context) {
+        try {
+            val cacheDir = context.cacheDir ?: return
+            val files = cacheDir.listFiles() ?: return
+            for (f in files) {
+                try {
+                    if (f.name.startsWith("handyasr_record_")) {
+                        f.delete()
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "failed to delete cache file ${f.name}", e)
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "clearCacheRecordFiles failed", e)
+        }
     }
 
     private fun createAndRunAudioRecordingJob(bufferSize: Int, sampleRate: Int) = scope.launch {
@@ -187,27 +186,13 @@ object AndroidAudioRecorderManager : AudioRecorderManager {
         }
     }
 
-    private suspend fun playFile(file: File) {
-        withContext(Dispatchers.Main) {
-            val mp = MediaPlayer()
-            try {
-                mp.setDataSource(file.absolutePath)
-                mp.setOnPreparedListener { player -> player.start() }
-                mp.setOnCompletionListener { player -> try { player.release() } catch (_: Throwable) {} }
-                mp.setOnErrorListener { player, what, extra ->
-                    try { player.release() } catch (_: Throwable) {}
-                    Log.e(TAG, "MediaPlayer error what=$what extra=$extra")
-                    true
-                }
-                mp.prepareAsync()
-            } catch (e: Exception) {
-                Log.e(TAG, "prepare/play failed", e)
-                try { mp.release() } catch (_: Throwable) {}
-            }
-        }
-    }
-
-    private fun createWavHeader(totalAudioLen: Long, totalDataLen: Long, longSampleRate: Int, channels: Int, byteRate: Int): ByteArray {
+    private fun createWavHeader(
+        totalAudioLen: Long,
+        totalDataLen: Long,
+        longSampleRate: Int,
+        channels: Int,
+        byteRate: Int
+    ): ByteArray {
         val header = ByteArray(44)
 
         header[0] = 'R'.code.toByte()

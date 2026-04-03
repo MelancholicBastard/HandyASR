@@ -15,10 +15,7 @@ import androidx.compose.ui.Modifier
 import com.melancholicbastard.handyasr.presentation.viewmodel.HistoryViewModel
 
 @Composable
-fun HistoryScreen(
-    viewModel: HistoryViewModel,
-    onOpenEditorForExistingRecord: () -> Unit
-) {
+fun HistoryScreen( viewModel: HistoryViewModel ) {
     val counterState by viewModel.integer.collectAsState()
     Column(
         modifier = Modifier.fillMaxSize(),
@@ -33,8 +30,12 @@ fun HistoryScreen(
         ) {
             Text(text = "${counterState}")
         }
-        Button(onClick = onOpenEditorForExistingRecord) {
-            Text(text = "Открыть редактор (редактирование)")
+        Button(
+            onClick = {
+                viewModel.onOpenEditorForExistingRecord("$counterState")
+            }
+        ) {
+            Text(text = "${counterState}")
         }
     }
 }

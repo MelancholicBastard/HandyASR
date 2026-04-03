@@ -11,7 +11,9 @@ import com.melancholicbastard.handyasr.presentation.App
 import com.melancholicbastard.handyasr.presentation.service.AndroidRecordingServiceCommandSender
 import com.melancholicbastard.handyasr.presentation.service.RecordingServiceBridge
 
-class RecorderViewModelFactory : ViewModelProvider.Factory {
+class RecorderViewModelFactory(
+    private val onOpenEditorForNewRecord: (String) -> Unit
+) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         val appContext = App.instance.applicationContext
         val permissionChecker = AndroidMicrophonePermissionChecker(appContext)
@@ -25,6 +27,7 @@ class RecorderViewModelFactory : ViewModelProvider.Factory {
             observeRecordingState = observeRecordingStateUseCase,
             sendRecordingCommand = sendRecordingCommandUseCase,
             observeRecordingResult = observeRecordingResultUseCase,
+            onOpenEditorForNewRecord = onOpenEditorForNewRecord
         ) as T
     }
 }

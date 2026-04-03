@@ -93,7 +93,7 @@ class RecordingService(
     }
 
     private fun acceptRecording() {
-        updateRuntimeState(RecordingRuntimeState.PROCESSING)
+//        updateRuntimeState(RecordingRuntimeState.PROCESSING)
         scope.launch {
             runCatching { acceptRecUseCase() }
                 .onSuccess { file ->

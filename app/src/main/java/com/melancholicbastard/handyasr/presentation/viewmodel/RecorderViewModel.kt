@@ -23,7 +23,8 @@ class RecorderViewModel(
     private val checkMicPermission: MicrophonePermissionCheckUseCase,
     private val observeRecordingState: ObserveRecordingStateUseCase,
     private val sendRecordingCommand: SendRecordingCommandUseCase,
-    private val observeRecordingResult: ObserveRecordingResultUseCase
+    private val observeRecordingResult: ObserveRecordingResultUseCase,
+    private val onOpenEditorForNewRecord: (String) -> Unit
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<RecordScreenUIState>(RecordScreenUIState.IdleUIState)
     val uiState: StateFlow<RecordScreenUIState> = _uiState.asStateFlow()
@@ -50,6 +51,7 @@ class RecorderViewModel(
         viewModelScope.launch {
             observeRecordingResult().collect { filePath ->
                 _audioFilePath.value = filePath
+                onOpenEditorForNewRecord(filePath)
             }
         }
     }
@@ -75,6 +77,7 @@ class RecorderViewModel(
     }
 
     fun acceptRecord() {
+        _uiState.value = RecordScreenUIState.ProcessUIState
         sendRecordingCommand(RecordingCommand.ACCEPT)
     }
 
@@ -94,5 +97,4 @@ sealed class RecordScreenUIState {
     object StartUIState : RecordScreenUIState()
     object PauseUIState : RecordScreenUIState()
     object ProcessUIState : RecordScreenUIState()
-    object RedactUIState : RecordScreenUIState()
 }

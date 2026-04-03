@@ -6,7 +6,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 class HistoryViewModel(
-
+    val onOpenEditorForExistingRecord: (String) -> Unit
 ): ViewModel() {
     private val _integer = MutableStateFlow(0)
     val integer : StateFlow<Int> = _integer.asStateFlow()

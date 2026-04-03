@@ -36,28 +36,29 @@ fun AppNavGraph(
         modifier = modifier
     ) {
         composable(Screen.Recorder.route) {
+            val onOpenEditorForNewRecord : (String) -> Unit = { filePath ->
+                navController.navigate(Screen.Editor.createRoute(isNew = true, entity = filePath))
+            }
             val recorderViewModel: RecorderViewModel = viewModel(
                 viewModelStoreOwner = activity,
-                factory = RecorderViewModelFactory()
+                factory = RecorderViewModelFactory(onOpenEditorForNewRecord = onOpenEditorForNewRecord)
             )
             RecorderScreen(
                 viewModel = recorderViewModel,
-                requestPermission = requestPermission,
-                onOpenEditorForNewRecord = {
-                    navController.navigate(Screen.Editor.createRoute(isNew = true))
-                }
+                requestPermission = requestPermission
             )
         }
         composable(Screen.History.route) {
+            val onOpenEditorForExistingRecord : (String) -> Unit = { recordId ->
+                navController.navigate(Screen.Editor.createRoute(isNew = false, entity = recordId))
+            }
             val historyViewModel: HistoryViewModel = viewModel(
                 viewModelStoreOwner = activity,
-                factory = HistoryViewModelFactory()
+                factory = HistoryViewModelFactory(onOpenEditorForExistingRecord = onOpenEditorForExistingRecord)
             )
+
             HistoryScreen(
-                viewModel = historyViewModel,
-                onOpenEditorForExistingRecord = {
-                    navController.navigate(Screen.Editor.createRoute(isNew = false))
-                }
+                viewModel = historyViewModel
             )
         }
         composable(Screen.Settings.route) {
@@ -69,12 +70,19 @@ fun AppNavGraph(
                 navArgument(Screen.Editor.IS_NEW_ARG) {
                     type = NavType.BoolType
                     defaultValue = true
+                },
+                navArgument(Screen.Editor.ENTITY_KEY) {
+                    type = NavType.StringType
                 }
             )
         ) { backStackEntry ->
             val isNew = backStackEntry.arguments?.getBoolean(Screen.Editor.IS_NEW_ARG) ?: true
+            val entity = backStackEntry.arguments?.getString(Screen.Editor.ENTITY_KEY) ?: ""
             val editViewModel: EditViewModel = viewModel(
-                factory = EditViewModelFactory(isNewRecord = isNew)
+                factory = EditViewModelFactory(
+                    isNewRecord = isNew,
+                    entity = entity
+                )
             )
             EditorScreen(
                 viewModel = editViewModel,
