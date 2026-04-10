@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.io.File
 import java.io.IOException
+import java.util.Objects
 
 class EditViewModel(
 	private val isNewRecord: Boolean,
@@ -32,10 +33,34 @@ class EditViewModel(
 	private var audioFile: File? = null
 
 	private var mediaPlayer: MediaPlayer? = null
-	private val _uiState = MutableStateFlow(PlayerUiState())
+	private val _playerUiState = MutableStateFlow(PlayerUiState())
 
-	val uiState: StateFlow<PlayerUiState> = _uiState.asStateFlow()
+	val playerUiState: StateFlow<PlayerUiState> = _playerUiState.asStateFlow()
+
+	private val _title = MutableStateFlow("")
+	val title: StateFlow<String> = _title.asStateFlow()
+
+	private val _textUiState = MutableStateFlow<TextUiState>(TextUiState.UndefinedTextState)
+	val textUiState: StateFlow<TextUiState> = _textUiState.asStateFlow()
+
+	private val _text = MutableStateFlow("")
+	val text: StateFlow<String> = _text.asStateFlow()
+
+	fun setTitle(value: String) {
+		_title.value = value
+	}
+
 	private var progressJob: Job? = null
+
+	fun setText(value: String) {
+		_text.value = value
+	}
+	fun setTextUiState(state: TextUiState) {
+		_textUiState.value = state
+	}
+	fun requestText() {
+		_textUiState.value = TextUiState.ProcessTextState
+	}
 
 	private val cleanupScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -45,7 +70,7 @@ class EditViewModel(
 			if (audioFile?.exists() == true) {
 				preparePlayerFromFile()
 			} else {
-				_uiState.value = _uiState.value.copy(isLoading = false, error = "Audio file not found: ${audioFile?.absolutePath}")
+				_playerUiState.value = _playerUiState.value.copy(isLoading = false, error = "Audio file not found: ${audioFile?.absolutePath}")
 			}
 		} else {
 			//
@@ -55,7 +80,7 @@ class EditViewModel(
 	private fun preparePlayerFromFile() {
 		val file = audioFile ?: return
 		releasePlayer()
-		_uiState.value = _uiState.value.copy(isLoading = true, error = null, isPlaying = false, positionMs = 0, durationMs = 0)
+		_playerUiState.value = _playerUiState.value.copy(isLoading = true, error = null, isPlaying = false, positionMs = 0, durationMs = 0)
 
 		mediaPlayer = MediaPlayer().apply {
 			try {
@@ -66,7 +91,7 @@ class EditViewModel(
 				)
 				setDataSource(file.absolutePath)
 				setOnPreparedListener { mp ->
-					_uiState.value = _uiState.value.copy(
+					_playerUiState.value = _playerUiState.value.copy(
 						isLoading = false,
 						durationMs = mp.duration,
 						positionMs = mp.currentPosition,
@@ -74,13 +99,13 @@ class EditViewModel(
 					)
 				}
 				setOnCompletionListener {
-					_uiState.value = _uiState.value.copy(isPlaying = false, positionMs = duration)
+					_playerUiState.value = _playerUiState.value.copy(isPlaying = false, positionMs = duration)
 					stopProgressUpdates()
 				}
 				prepareAsync()
 			} catch (e: IOException) {
 				Log.e(TAG, "prepareFromFile error", e)
-				_uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
+				_playerUiState.value = _playerUiState.value.copy(isLoading = false, error = e.message)
 			}
 		}
 	}
@@ -94,7 +119,7 @@ class EditViewModel(
 	fun play() {
 		mediaPlayer?.also { mp ->
 			mp.start()
-			_uiState.value = _uiState.value.copy(isPlaying = true)
+			_playerUiState.value = _playerUiState.value.copy(isPlaying = true)
 			startProgressUpdates()
 		}
 	}
@@ -102,7 +127,7 @@ class EditViewModel(
 	fun pause() {
 		mediaPlayer?.also { mp ->
 			mp.pause()
-			_uiState.value = _uiState.value.copy(isPlaying = false)
+			_playerUiState.value = _playerUiState.value.copy(isPlaying = false)
 			stopProgressUpdates()
 		}
 	}
@@ -111,7 +136,7 @@ class EditViewModel(
 		mediaPlayer?.also { mp ->
 			val to = ms.coerceIn(0, mp.duration)
 			mp.seekTo(to)
-			_uiState.value = _uiState.value.copy(positionMs = to)
+			_playerUiState.value = _playerUiState.value.copy(positionMs = to)
 		}
 	}
 
@@ -134,7 +159,7 @@ class EditViewModel(
 				mediaPlayer?.also { mp ->
 					if (!mp.isPlaying) break
 					try {
-						_uiState.value = _uiState.value.copy(positionMs = mp.currentPosition)
+						_playerUiState.value = _playerUiState.value.copy(positionMs = mp.currentPosition)
 					} catch (t: Throwable) {
 						Log.w(TAG, "progress update failed", t)
 					}
@@ -158,7 +183,7 @@ class EditViewModel(
 			Log.w(TAG, "release failed", t)
 		} finally {
 			mediaPlayer = null
-			_uiState.value = PlayerUiState()
+			_playerUiState.value = PlayerUiState()
 		}
 	}
 
@@ -176,3 +201,9 @@ data class PlayerUiState(
 	val positionMs: Int = 0,
 	val error: String? = null
 )
+
+sealed class TextUiState {
+	object UndefinedTextState : TextUiState()
+	object ProcessTextState : TextUiState()
+	object DefinedTextState : TextUiState()
+}

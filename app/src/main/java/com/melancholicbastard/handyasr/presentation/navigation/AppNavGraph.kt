@@ -4,6 +4,8 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.NavHostController
@@ -28,6 +30,7 @@ fun AppNavGraph(
     modifier: Modifier = Modifier,
     startDestination: String = Screen.Recorder.route,
     activity: ComponentActivity,
+    bottomPadding: Dp = 0.dp,
     requestPermission: () -> Unit
 ) {
     NavHost(
@@ -86,7 +89,8 @@ fun AppNavGraph(
             )
             EditorScreen(
                 viewModel = editViewModel,
-                onBackClick = { navController.popBackStack() }
+                bottomPadding = bottomPadding,
+                onBackClick = { navController.popBackStack() },
             )
         }
     }

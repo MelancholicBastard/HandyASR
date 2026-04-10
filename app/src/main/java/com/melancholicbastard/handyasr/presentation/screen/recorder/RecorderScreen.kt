@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -19,7 +18,6 @@ import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
@@ -34,6 +32,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.melancholicbastard.handyasr.presentation.ui.components.ProcessView
+import com.melancholicbastard.handyasr.presentation.ui.components.MyLargeCircularButton
 import com.melancholicbastard.handyasr.presentation.viewmodel.RecordScreenUIState
 import com.melancholicbastard.handyasr.presentation.viewmodel.RecorderViewModel
 
@@ -59,13 +59,6 @@ fun RecorderScreen(
             RecordScreenUIState.ProcessUIState -> ProcessView()
         }
     }
-}
-
-@Composable
-fun ProcessView() {
-    CircularProgressIndicator(modifier = Modifier.size(48.dp), strokeWidth = 4.dp)
-    Spacer(modifier = Modifier.height(12.dp))
-    Text(text = "Обработка...", style = MaterialTheme.typography.bodySmall)
 }
 
 @Composable
@@ -133,16 +126,11 @@ fun IdleView(
 
     Text(text = "Нажмите, чтобы начать запись")
     Spacer(modifier = Modifier.height(16.dp))
-    Button(
-        onClick = {
-            viewModel.startRecording()
-        }
-    ) {
-        Icon(
-            imageVector = Icons.Default.Mic,
-            contentDescription = "Start recording"
-        )
-    }
+    MyLargeCircularButton(
+        onClick = { viewModel.startRecording() },
+        icon = Icons.Default.Mic,
+        contentDescription = "Start recording"
+    )
 }
 
 @Composable
