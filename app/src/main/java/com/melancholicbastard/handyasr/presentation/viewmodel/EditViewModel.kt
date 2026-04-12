@@ -5,6 +5,8 @@ import android.media.MediaPlayer
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.melancholicbastard.handyasr.domain.decode.DecodeAudioUseCase
+import com.melancholicbastard.handyasr.domain.decode.DecodeResult
 import com.melancholicbastard.handyasr.domain.editor.DeleteFromCacheUseCase
 import com.melancholicbastard.handyasr.domain.editor.ReplaceFromCacheUseCase
 import kotlinx.coroutines.CoroutineScope
@@ -18,192 +20,224 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.io.File
 import java.io.IOException
-import java.util.Objects
 
 class EditViewModel(
-	private val isNewRecord: Boolean,
-	private val entity: String,
-	private val replaceFromCache : ReplaceFromCacheUseCase,
-	private val deleteFromCache : DeleteFromCacheUseCase
+    private val isNewRecord: Boolean,
+    private val entity: String,
+    private val replaceFromCache: ReplaceFromCacheUseCase,
+    private val deleteFromCache: DeleteFromCacheUseCase,
+    private val decodeAudioUseCase: DecodeAudioUseCase
 ) : ViewModel() {
-	companion object {
-		private const val TAG = "EditViewModel"
-	}
+    companion object {
+        private const val TAG = "EditViewModel"
+    }
 
-	private var audioFile: File? = null
+    private var audioFile: File? = null
 
-	private var mediaPlayer: MediaPlayer? = null
-	private val _playerUiState = MutableStateFlow(PlayerUiState())
+    private var mediaPlayer: MediaPlayer? = null
+    private val _playerUiState = MutableStateFlow(PlayerUiState())
 
-	val playerUiState: StateFlow<PlayerUiState> = _playerUiState.asStateFlow()
+    val playerUiState: StateFlow<PlayerUiState> = _playerUiState.asStateFlow()
 
-	private val _title = MutableStateFlow("")
-	val title: StateFlow<String> = _title.asStateFlow()
+    private val _title = MutableStateFlow("")
+    val title: StateFlow<String> = _title.asStateFlow()
 
-	private val _textUiState = MutableStateFlow<TextUiState>(TextUiState.UndefinedTextState)
-	val textUiState: StateFlow<TextUiState> = _textUiState.asStateFlow()
+    private val _textUiState = MutableStateFlow<TextUiState>(TextUiState.UndefinedTextState)
+    val textUiState: StateFlow<TextUiState> = _textUiState.asStateFlow()
 
-	private val _text = MutableStateFlow("")
-	val text: StateFlow<String> = _text.asStateFlow()
+    private val _text = MutableStateFlow("")
+    val text: StateFlow<String> = _text.asStateFlow()
 
-	fun setTitle(value: String) {
-		_title.value = value
-	}
+    fun setTitle(value: String) {
+        _title.value = value
+    }
 
-	private var progressJob: Job? = null
+    private var progressJob: Job? = null
 
-	fun setText(value: String) {
-		_text.value = value
-	}
-	fun setTextUiState(state: TextUiState) {
-		_textUiState.value = state
-	}
-	fun requestText() {
-		_textUiState.value = TextUiState.ProcessTextState
-	}
+    fun setText(value: String) {
+        _text.value = value
+    }
 
-	private val cleanupScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    fun requestText() {
+        val file = audioFile
+        if (file == null || !file.exists()) {
+            _playerUiState.value = _playerUiState.value.copy(error = "Аудиофайл не найден")
+            return
+        }
 
-	init {
-		if (isNewRecord) {
-			audioFile = File(entity)
-			if (audioFile?.exists() == true) {
-				preparePlayerFromFile()
-			} else {
-				_playerUiState.value = _playerUiState.value.copy(isLoading = false, error = "Audio file not found: ${audioFile?.absolutePath}")
-			}
-		} else {
-			//
-		}
-	}
+        _textUiState.value = TextUiState.ProcessTextState
+        viewModelScope.launch {
+            val result = decodeAudioUseCase(file)
 
-	private fun preparePlayerFromFile() {
-		val file = audioFile ?: return
-		releasePlayer()
-		_playerUiState.value = _playerUiState.value.copy(isLoading = true, error = null, isPlaying = false, positionMs = 0, durationMs = 0)
+            when (result) {
+                is DecodeResult.Success -> {
+                    _text.value = result.text
+                    _textUiState.value = TextUiState.DefinedTextState
+                }
 
-		mediaPlayer = MediaPlayer().apply {
-			try {
-				setAudioAttributes(
-					AudioAttributes.Builder()
-						.setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-						.build()
-				)
-				setDataSource(file.absolutePath)
-				setOnPreparedListener { mp ->
-					_playerUiState.value = _playerUiState.value.copy(
-						isLoading = false,
-						durationMs = mp.duration,
-						positionMs = mp.currentPosition,
-						isPlaying = false
-					)
-				}
-				setOnCompletionListener {
-					_playerUiState.value = _playerUiState.value.copy(isPlaying = false, positionMs = duration)
-					stopProgressUpdates()
-				}
-				prepareAsync()
-			} catch (e: IOException) {
-				Log.e(TAG, "prepareFromFile error", e)
-				_playerUiState.value = _playerUiState.value.copy(isLoading = false, error = e.message)
-			}
-		}
-	}
+                is DecodeResult.Error -> {
+                    Log.e(TAG, "decode request failed: ${result.detail}")
+                    _playerUiState.value = _playerUiState.value.copy(error = result.detail)
+                    _textUiState.value = TextUiState.UndefinedTextState
+                }
+            }
+        }
+    }
 
-	fun togglePlayPause() {
-		mediaPlayer?.also { mp ->
-			if (mp.isPlaying) pause() else play()
-		}
-	}
+    private val cleanupScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-	fun play() {
-		mediaPlayer?.also { mp ->
-			mp.start()
-			_playerUiState.value = _playerUiState.value.copy(isPlaying = true)
-			startProgressUpdates()
-		}
-	}
+    init {
+        if (isNewRecord) {
+            audioFile = File(entity)
+            if (audioFile?.exists() == true) {
+                preparePlayerFromFile()
+            } else {
+                _playerUiState.value = _playerUiState.value.copy(
+                    isLoading = false,
+                    error = "Audio file not found: ${audioFile?.absolutePath}"
+                )
+            }
+        } else {
+            //
+        }
+    }
 
-	fun pause() {
-		mediaPlayer?.also { mp ->
-			mp.pause()
-			_playerUiState.value = _playerUiState.value.copy(isPlaying = false)
-			stopProgressUpdates()
-		}
-	}
+    private fun preparePlayerFromFile() {
+        val file = audioFile ?: return
+        releasePlayer()
+        _playerUiState.value = _playerUiState.value.copy(
+            isLoading = true,
+            error = null,
+            isPlaying = false,
+            positionMs = 0,
+            durationMs = 0
+        )
 
-	fun seekTo(ms: Int) {
-		mediaPlayer?.also { mp ->
-			val to = ms.coerceIn(0, mp.duration)
-			mp.seekTo(to)
-			_playerUiState.value = _playerUiState.value.copy(positionMs = to)
-		}
-	}
+        mediaPlayer = MediaPlayer().apply {
+            try {
+                setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                        .build()
+                )
+                setDataSource(file.absolutePath)
+                setOnPreparedListener { mp ->
+                    _playerUiState.value = _playerUiState.value.copy(
+                        isLoading = false,
+                        durationMs = mp.duration,
+                        positionMs = mp.currentPosition,
+                        isPlaying = false
+                    )
+                }
+                setOnCompletionListener {
+                    _playerUiState.value =
+                        _playerUiState.value.copy(isPlaying = false, positionMs = duration)
+                    stopProgressUpdates()
+                }
+                prepareAsync()
+            } catch (e: IOException) {
+                Log.e(TAG, "prepareFromFile error", e)
+                _playerUiState.value =
+                    _playerUiState.value.copy(isLoading = false, error = e.message)
+            }
+        }
+    }
 
-	fun skipForward(byMs: Int = 5000) {
-		mediaPlayer?.also { mp ->
-			seekTo((mp.currentPosition + byMs).coerceAtMost(mp.duration))
-		}
-	}
+    fun togglePlayPause() {
+        mediaPlayer?.also { mp ->
+            if (mp.isPlaying) pause() else play()
+        }
+    }
 
-	fun skipBackward(byMs: Int = 5000) {
-		mediaPlayer?.also { mp ->
-			seekTo((mp.currentPosition - byMs).coerceAtLeast(0))
-		}
-	}
+    fun play() {
+        mediaPlayer?.also { mp ->
+            mp.start()
+            _playerUiState.value = _playerUiState.value.copy(isPlaying = true)
+            startProgressUpdates()
+        }
+    }
 
-	private fun startProgressUpdates() {
-		progressJob?.cancel()
-		progressJob = viewModelScope.launch {
-			while (true) {
-				mediaPlayer?.also { mp ->
-					if (!mp.isPlaying) break
-					try {
-						_playerUiState.value = _playerUiState.value.copy(positionMs = mp.currentPosition)
-					} catch (t: Throwable) {
-						Log.w(TAG, "progress update failed", t)
-					}
-				}
-				delay(500)
-			}
-		}
-	}
+    fun pause() {
+        mediaPlayer?.also { mp ->
+            mp.pause()
+            _playerUiState.value = _playerUiState.value.copy(isPlaying = false)
+            stopProgressUpdates()
+        }
+    }
 
-	private fun stopProgressUpdates() {
-		progressJob?.cancel()
-		progressJob = null
-	}
+    fun seekTo(ms: Int) {
+        mediaPlayer?.also { mp ->
+            val to = ms.coerceIn(0, mp.duration)
+            mp.seekTo(to)
+            _playerUiState.value = _playerUiState.value.copy(positionMs = to)
+        }
+    }
 
-	private fun releasePlayer() {
-		try {
-			stopProgressUpdates()
-			mediaPlayer?.reset()
-			mediaPlayer?.release()
-		} catch (t: Throwable) {
-			Log.w(TAG, "release failed", t)
-		} finally {
-			mediaPlayer = null
-			_playerUiState.value = PlayerUiState()
-		}
-	}
+    fun skipForward(byMs: Int = 5000) {
+        mediaPlayer?.also { mp ->
+            seekTo((mp.currentPosition + byMs).coerceAtMost(mp.duration))
+        }
+    }
 
-	override fun onCleared() {
-		if (audioFile != null) cleanupScope.launch { deleteFromCache(audioFile!!) }
-		super.onCleared()
-		releasePlayer()
-	}
+    fun skipBackward(byMs: Int = 5000) {
+        mediaPlayer?.also { mp ->
+            seekTo((mp.currentPosition - byMs).coerceAtLeast(0))
+        }
+    }
+
+    private fun startProgressUpdates() {
+        progressJob?.cancel()
+        progressJob = viewModelScope.launch {
+            while (true) {
+                mediaPlayer?.also { mp ->
+                    if (!mp.isPlaying) break
+                    try {
+                        _playerUiState.value =
+                            _playerUiState.value.copy(positionMs = mp.currentPosition)
+                    } catch (t: Throwable) {
+                        Log.w(TAG, "progress update failed", t)
+                    }
+                }
+                delay(500)
+            }
+        }
+    }
+
+    private fun stopProgressUpdates() {
+        progressJob?.cancel()
+        progressJob = null
+    }
+
+    private fun releasePlayer() {
+        try {
+            stopProgressUpdates()
+            mediaPlayer?.reset()
+            mediaPlayer?.release()
+        } catch (t: Throwable) {
+            Log.w(TAG, "release failed", t)
+        } finally {
+            mediaPlayer = null
+            _playerUiState.value = PlayerUiState()
+        }
+    }
+
+    override fun onCleared() {
+        if (audioFile != null) cleanupScope.launch { deleteFromCache(audioFile!!) }
+        super.onCleared()
+        releasePlayer()
+    }
 }
 
 data class PlayerUiState(
-	val isPlaying: Boolean = false,
-	val isLoading: Boolean = false,
-	val durationMs: Int = 0,
-	val positionMs: Int = 0,
-	val error: String? = null
+    val isPlaying: Boolean = false,
+    val isLoading: Boolean = false,
+    val durationMs: Int = 0,
+    val positionMs: Int = 0,
+    val error: String? = null
 )
 
 sealed class TextUiState {
-	object UndefinedTextState : TextUiState()
-	object ProcessTextState : TextUiState()
-	object DefinedTextState : TextUiState()
+    object UndefinedTextState : TextUiState()
+    object ProcessTextState : TextUiState()
+    object DefinedTextState : TextUiState()
 }

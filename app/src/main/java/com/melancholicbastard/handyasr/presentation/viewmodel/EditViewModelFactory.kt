@@ -18,11 +18,13 @@ class EditViewModelFactory(
         val replaceFromCache = ReplaceFromCacheUseCase(androidReplaceFromCache)
         val androidDeleteFromCache = AndroidDeleteFromCache()
         val deleteFromCache = DeleteFromCacheUseCase(androidDeleteFromCache)
+        val decodeAudioUseCase = App.instance.appContainer.decodeAudioUseCase
         return EditViewModel(
             isNewRecord = isNewRecord,
             entity = entity,
             replaceFromCache = replaceFromCache,
-            deleteFromCache = deleteFromCache
+            deleteFromCache = deleteFromCache,
+            decodeAudioUseCase = decodeAudioUseCase
         ) as T
     }
 }

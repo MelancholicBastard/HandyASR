@@ -37,9 +37,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
-import com.melancholicbastard.handyasr.presentation.ui.components.ProcessView
 import com.melancholicbastard.handyasr.presentation.ui.components.MyLargeCircularButton
 import com.melancholicbastard.handyasr.presentation.ui.components.PlayerBubble
+import com.melancholicbastard.handyasr.presentation.ui.components.ProcessView
 import com.melancholicbastard.handyasr.presentation.viewmodel.EditViewModel
 import com.melancholicbastard.handyasr.presentation.viewmodel.PlayerUiState
 import com.melancholicbastard.handyasr.presentation.viewmodel.TextUiState
