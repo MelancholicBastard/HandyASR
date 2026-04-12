@@ -4,7 +4,7 @@ import android.app.Application
 import com.melancholicbastard.handyasr.presentation.di.AppContainer
 
 class App : Application() {
-    val appContainer: AppContainer by lazy { AppContainer() }
+    val appContainer: AppContainer by lazy { AppContainer(applicationContext) }
 
     companion object {
         lateinit var instance: App
