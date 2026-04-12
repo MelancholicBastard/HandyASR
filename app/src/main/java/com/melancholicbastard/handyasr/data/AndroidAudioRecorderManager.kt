@@ -1,8 +1,8 @@
 package com.melancholicbastard.handyasr.data
 
+import android.content.Context
 import android.media.AudioFormat
 import android.media.AudioRecord
-import android.media.MediaPlayer
 import android.media.MediaRecorder
 import android.util.Log
 import com.melancholicbastard.handyasr.data.permission.AndroidMicrophonePermissionChecker
@@ -22,6 +22,7 @@ import java.io.FileOutputStream
 import java.io.RandomAccessFile
 
 object AndroidAudioRecorderManager : AudioRecorderManager {
+    private const val TAG = "AudioRecManager"
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val microphonePermissionCheckUseCase = MicrophonePermissionCheckUseCase(
         AndroidMicrophonePermissionChecker(App.instance)
@@ -37,11 +38,15 @@ object AndroidAudioRecorderManager : AudioRecorderManager {
 
     override suspend fun startAudioRecording() {
         if (!microphonePermissionCheckUseCase()) {
-            Log.e("AudioRecManager", "Audio recording permission not granted")
+            Log.e(TAG, "Audio recording permission not granted")
             return
         }
         try {
             val context = App.instance
+            withContext(Dispatchers.IO) {
+                clearCacheRecordFiles(context)
+            }
+
             val tmp = withContext(Dispatchers.IO) {
                 File.createTempFile("handyasr_record_", ".wav", context.cacheDir)
             }
@@ -51,11 +56,12 @@ object AndroidAudioRecorderManager : AudioRecorderManager {
             val channelConfig = AudioFormat.CHANNEL_IN_MONO
             val audioFormat = AudioFormat.ENCODING_PCM_16BIT
             val minBufSize = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat)
-            val bufferSize = if (minBufSize == AudioRecord.ERROR || minBufSize == AudioRecord.ERROR_BAD_VALUE) {
-                sampleRate * 2
-            } else {
-                minBufSize * 2
-            }
+            val bufferSize =
+                if (minBufSize == AudioRecord.ERROR || minBufSize == AudioRecord.ERROR_BAD_VALUE) {
+                    sampleRate * 2
+                } else {
+                    minBufSize * 2
+                }
 
             try {
                 audioRecorder = AudioRecord(
@@ -68,7 +74,7 @@ object AndroidAudioRecorderManager : AudioRecorderManager {
 
                 audioRecorder?.startRecording()
             } catch (sec: SecurityException) {
-                Log.e("AudioRecManager", "missing RECORD_AUDIO permission or start failed", sec)
+                Log.e(TAG, "missing RECORD_AUDIO permission or start failed", sec)
                 audioRecorder = null
                 return
             }
@@ -78,23 +84,23 @@ object AndroidAudioRecorderManager : AudioRecorderManager {
 
             audioRecordingJob = createAndRunAudioRecordingJob(bufferSize, sampleRate)
 
-            Log.d("AudioRecManager", "started -> ${audioFile?.absolutePath}")
+            Log.d(TAG, "started -> ${audioFile?.absolutePath}")
         } catch (e: Exception) {
-            Log.e("AudioRecManager", "start error", e)
+            Log.e(TAG, "start error", e)
         }
     }
 
     override fun pauseAudioRecording() {
         isPausedRecording = true
-        Log.d("AudioRecManager", "paused")
+        Log.d(TAG, "paused")
     }
 
     override fun resumeAudioRecording() {
         isPausedRecording = false
-        Log.d("AudioRecManager", "resumed")
+        Log.d(TAG, "resumed")
     }
 
-    override suspend fun stopAudioRecording(delete: Boolean): File? {
+    override suspend fun stopAudioRecording(delete: Boolean): String? {
         try {
             isRecording = false
 
@@ -102,40 +108,47 @@ object AndroidAudioRecorderManager : AudioRecorderManager {
                 audioRecorder?.stop()
                 audioRecorder?.release()
             } catch (e: Exception) {
-                Log.e("AudioRecManager", "stop() threw", e)
+                Log.e(TAG, "stop() threw", e)
             }
             audioRecorder = null
 
-            try {
-                audioRecordingJob?.cancel()
-                audioRecordingJob?.join()
-            } catch (_: Throwable) {}
+            audioRecordingJob?.cancel()
+            audioRecordingJob?.join()
             audioRecordingJob = null
 
-            val file = audioFile
-            if (file == null) {
-                Log.e("AudioRecManager", "no audio file to process")
+            if (audioFile == null) {
+                Log.e(TAG, "no audio file to process")
                 return null
             }
 
-            if (delete) {
-                try { if (file.exists()) file.delete() } catch (_: Throwable) {}
+            if (!delete) {
+                return audioFile!!.absolutePath
+            } else {
+                if (audioFile?.exists() == true) audioFile?.delete()
                 audioFile = null
-                return null
             }
-
-            try {
-                playFile(file)
-            } catch (e: Exception) {
-                Log.e("AudioRecManager", "play error", e)
-            }
-            return file
         } catch (e: Exception) {
-            Log.e("AudioRecManager", "stop error", e)
-        } finally {
-            audioFile = null
+            Log.e(TAG, "stop error", e)
         }
         return null
+    }
+
+    private fun clearCacheRecordFiles(context: Context) {
+        try {
+            val cacheDir = context.cacheDir ?: return
+            val files = cacheDir.listFiles() ?: return
+            for (f in files) {
+                try {
+                    if (f.name.startsWith("handyasr_record_")) {
+                        f.delete()
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "failed to delete cache file ${f.name}", e)
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "clearCacheRecordFiles failed", e)
+        }
     }
 
     private fun createAndRunAudioRecordingJob(bufferSize: Int, sampleRate: Int) = scope.launch {
@@ -165,35 +178,21 @@ object AndroidAudioRecorderManager : AudioRecorderManager {
                         raf.write(header)
                     }
                 } catch (e: Exception) {
-                    Log.e("AudioRecManager", "wav header finalize error", e)
+                    Log.e(TAG, "wav header finalize error", e)
                 }
             }
         } catch (e: Exception) {
-            Log.e("AudioRecManager", "recording job error", e)
+            Log.e(TAG, "recording job error", e)
         }
     }
 
-    private suspend fun playFile(file: File) {
-        withContext(Dispatchers.Main) {
-            val mp = MediaPlayer()
-            try {
-                mp.setDataSource(file.absolutePath)
-                mp.setOnPreparedListener { player -> player.start() }
-                mp.setOnCompletionListener { player -> try { player.release() } catch (_: Throwable) {} }
-                mp.setOnErrorListener { player, what, extra ->
-                    try { player.release() } catch (_: Throwable) {}
-                    Log.e("AudioRecManager", "MediaPlayer error what=$what extra=$extra")
-                    true
-                }
-                mp.prepareAsync()
-            } catch (e: Exception) {
-                Log.e("AudioRecManager", "prepare/play failed", e)
-                try { mp.release() } catch (_: Throwable) {}
-            }
-        }
-    }
-
-    private fun createWavHeader(totalAudioLen: Long, totalDataLen: Long, longSampleRate: Int, channels: Int, byteRate: Int): ByteArray {
+    private fun createWavHeader(
+        totalAudioLen: Long,
+        totalDataLen: Long,
+        longSampleRate: Int,
+        channels: Int,
+        byteRate: Int
+    ): ByteArray {
         val header = ByteArray(44)
 
         header[0] = 'R'.code.toByte()

@@ -20,10 +20,10 @@ fun NavBackHandler(
             if (currentRoute != null && currentRoute != startRoute) {
                 navController.navigate(startRoute) {
                     popUpTo(startRoute) {
-                        inclusive = true
                         saveState = true // На всякий случай
                     }
                     launchSingleTop = true
+                    restoreState = true
                 }
             } else {
                 onExit()

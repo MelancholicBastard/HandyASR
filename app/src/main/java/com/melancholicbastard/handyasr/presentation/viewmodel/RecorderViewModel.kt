@@ -1,6 +1,5 @@
 package com.melancholicbastard.handyasr.presentation.viewmodel
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.melancholicbastard.handyasr.domain.permission.MicrophonePermissionCheckUseCase
@@ -19,13 +18,13 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import java.io.File
 
 class RecorderViewModel(
     private val checkMicPermission: MicrophonePermissionCheckUseCase,
     private val observeRecordingState: ObserveRecordingStateUseCase,
     private val sendRecordingCommand: SendRecordingCommandUseCase,
-    private val observeRecordingResult: ObserveRecordingResultUseCase
+    private val observeRecordingResult: ObserveRecordingResultUseCase,
+    private val onOpenEditorForNewRecord: (String) -> Unit
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<RecordScreenUIState>(RecordScreenUIState.IdleUIState)
     val uiState: StateFlow<RecordScreenUIState> = _uiState.asStateFlow()
@@ -33,8 +32,8 @@ class RecorderViewModel(
     private val _requestForPermission = MutableSharedFlow<Unit>(replay = 0)
     val requestForPermission: SharedFlow<Unit> = _requestForPermission.asSharedFlow()
 
-    private val _audioFile = MutableStateFlow<File?>(null)
-    val audioFile: StateFlow<File?> = _audioFile.asStateFlow()
+    private val _audioFilePath = MutableStateFlow<String?>(null)
+    val audioFilePath: StateFlow<String?> = _audioFilePath.asStateFlow()
 
     val elapsedMs: StateFlow<Long> = AndroidTimerManager.elapsedMs
         .stateIn(
@@ -50,8 +49,9 @@ class RecorderViewModel(
             }
         }
         viewModelScope.launch {
-            observeRecordingResult().collect { file ->
-                _audioFile.value = file
+            observeRecordingResult().collect { filePath ->
+                _audioFilePath.value = filePath
+                onOpenEditorForNewRecord(filePath)
             }
         }
     }
@@ -77,6 +77,7 @@ class RecorderViewModel(
     }
 
     fun acceptRecord() {
+        _uiState.value = RecordScreenUIState.ProcessUIState
         sendRecordingCommand(RecordingCommand.ACCEPT)
     }
 
@@ -96,5 +97,4 @@ sealed class RecordScreenUIState {
     object StartUIState : RecordScreenUIState()
     object PauseUIState : RecordScreenUIState()
     object ProcessUIState : RecordScreenUIState()
-    object RedactUIState : RecordScreenUIState()
 }

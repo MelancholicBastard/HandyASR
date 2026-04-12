@@ -48,6 +48,7 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier.padding(innerPadding),
                         startDestination = Screen.Recorder.route,
                         activity = this,
+                        bottomPadding = innerPadding.calculateBottomPadding(),
                         requestPermission = requestPermission
                     )
                 }

@@ -1,11 +1,9 @@
 package com.melancholicbastard.handyasr.domain.recording
 
-import java.io.File
-
 class AcceptRecordingUseCase(
     private val acceptRecording: AcceptRecording
 ) {
-    suspend operator fun invoke(): File {
+    suspend operator fun invoke(): String {
         return acceptRecording.accept()
     }
 }

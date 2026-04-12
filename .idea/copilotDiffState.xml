@@ -3,6 +3,14 @@
   <component name="CopilotDiffPersistence">
     <option name="pendingDiffs">
       <map>
+        <entry key="$PROJECT_DIR$/app/src/main/java/com/melancholicbastard/handyasr/data/decode/RetrofitDecodeRepository.kt">
+          <value>
+            <PendingDiffInfo>
+              <option name="filePath" value="$PROJECT_DIR$/app/src/main/java/com/melancholicbastard/handyasr/data/decode/RetrofitDecodeRepository.kt" />
+              <option name="updatedContent" value="package com.melancholicbastard.handyasr.data.decode&#10;&#10;import com.melancholicbastard.handyasr.domain.decode.DecodeRepository&#10;import okhttp3.MediaType.Companion.toMediaTypeOrNull&#10;import okhttp3.MultipartBody&#10;import okhttp3.RequestBody.Companion.asRequestBody&#10;import java.io.File&#10;import java.io.IOException&#10;&#10;class RetrofitDecodeRepository(&#10;    private val decodeApi: DecodeApi&#10;) : DecodeRepository {&#10;&#10;    override suspend fun decodeAudio(file: File): String {&#10;        if (!file.exists()) {&#10;            throw IOException(&quot;Audio file does not exist: ${file.absolutePath}&quot;)&#10;        }&#10;&#10;        val requestBody = file.asRequestBody(&quot;audio/wav&quot;.toMediaTypeOrNull())&#10;        val filePart = MultipartBody.Part.createFormData(&quot;file&quot;, file.name, requestBody)&#10;&#10;        val response = decodeApi.decode(filePart)&#10;        if (!response.isSuccessful) {&#10;            throw IOException(&quot;Decode request failed with code ${response.code()}&quot;)&#10;        }&#10;&#10;        val body = response.body()?.string()?.trim().orEmpty()&#10;        if (body.isBlank()) {&#10;            throw IOException(&quot;Decode response is empty&quot;)&#10;        }&#10;&#10;        return extractText(body)&#10;    }&#10;&#10;    private fun extractText(rawBody: String): String {&#10;        val textRegex = &quot;\&quot;text\&quot;\\s*:\\s*\&quot;(.*?)\&quot;&quot;.toRegex()&#10;        val textMatch = textRegex.find(rawBody)&#10;        return textMatch?.groupValues?.get(1)&#10;            ?.replace(&quot;\\n&quot;, &quot;\n&quot;)&#10;            ?.replace(&quot;\\\&quot;&quot;, &quot;\&quot;&quot;)&#10;            ?.trim()&#10;            ?.ifBlank { rawBody }&#10;            ?: rawBody&#10;    }&#10;}&#10;" />
+            </PendingDiffInfo>
+          </value>
+        </entry>
         <entry key="$PROJECT_DIR$/app/src/main/java/com/melancholicbastard/handyasr/presentation/AppNavGraph.kt">
           <value>
             <PendingDiffInfo>
