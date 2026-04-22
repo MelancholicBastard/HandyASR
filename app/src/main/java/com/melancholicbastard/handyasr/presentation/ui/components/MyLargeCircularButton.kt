@@ -8,6 +8,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 @Composable
@@ -16,12 +17,15 @@ fun MyLargeCircularButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     icon: ImageVector,
-    contentDescription: String = ""
+    contentDescription: String = "",
+    diameter: Dp = 64.dp
 ) {
     Button(
         onClick = onClick,
         enabled = enabled,
-        modifier = modifier.size(64.dp),
+        modifier = modifier
+            .size(diameter)
+        ,
         shape = CircleShape,
         contentPadding = PaddingValues(0.dp)
     ) {

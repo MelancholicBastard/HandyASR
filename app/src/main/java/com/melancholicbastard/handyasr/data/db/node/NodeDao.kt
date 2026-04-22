@@ -19,17 +19,34 @@ interface NodeDao {
     @Query("DELETE FROM nodes WHERE id = :id")
     suspend fun deleteById(id: Long)
 
+    @Query("DELETE FROM nodes")
+    suspend fun deleteAll()
+
+    @Query("SELECT * FROM nodes WHERE id = :id LIMIT 1")
+    suspend fun getById(id: Long): NodeEntity?
+
     @Query("SELECT * FROM nodes ORDER BY created_at DESC")
-    fun getNodesByDateDesc(): Flow<List<NodeEntity>>
+    fun getAll(): Flow<List<NodeEntity>>
 
     @Query(
         """
         SELECT * FROM nodes
-        WHERE title LIKE '%' || :query || '%' COLLATE NOCASE
-        OR text LIKE '%' || :query || '%' COLLATE NOCASE
+        WHERE (
+            (:query IS NULL OR :query = '')
+            OR title LIKE '%' || :query || '%' COLLATE NOCASE
+            OR text LIKE '%' || :query || '%' COLLATE NOCASE
+        )
+        AND (
+            :startTimestamp IS NULL
+            OR (:startTimestamp <= created_at AND created_at < :endTimestamp)
+        )
         ORDER BY created_at DESC
         """
     )
-    fun searchByTextOrTitle(query: String): Flow<List<NodeEntity>>
+    fun searchNodesBy(
+        startTimestamp: Long?,
+        endTimestamp: Long?,
+        query: String?
+    ): Flow<List<NodeEntity>>
 }
 

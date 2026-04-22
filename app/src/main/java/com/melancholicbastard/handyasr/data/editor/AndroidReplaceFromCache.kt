@@ -1,6 +1,5 @@
 package com.melancholicbastard.handyasr.data.editor
 
-import android.content.Context
 import android.util.Log
 import com.melancholicbastard.handyasr.domain.editor.ReplaceFromCache
 import kotlinx.coroutines.Dispatchers
@@ -8,25 +7,21 @@ import kotlinx.coroutines.withContext
 import java.io.File
 
 class AndroidReplaceFromCache(
-    private val context: Context
+    private val recordingsDir: File
 ) : ReplaceFromCache {
     companion object {
         private const val TAG = "AndroidReplaceFromCache"
     }
 
-    override suspend fun replaceToPersistentStorage(file: File) {
-        withContext(Dispatchers.IO) {
-            val recordingsDir = File(context.filesDir, "recordings")
-            if (!recordingsDir.exists()) {
-                recordingsDir.mkdirs()
-                Log.d(TAG, "There is no directory on path: ${recordingsDir.absolutePath}")
-            }
-
+    override suspend fun replaceToPersistentStorage(file: File): File {
+        return withContext(Dispatchers.IO) {
             try {
                 val destFile = File(recordingsDir, "rec_${System.currentTimeMillis()}.wav")
                 file.copyTo(destFile, overwrite = true)
+                destFile
             } catch (t: Throwable) {
                 Log.e(TAG, "failed to copy file into directory", t)
+                throw t
             }
         }
     }

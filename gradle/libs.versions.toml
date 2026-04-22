@@ -1,5 +1,6 @@
 [versions]
 agp = "9.1.0"
+desugar_jdk_libs = "2.1.5"
 kotlin = "2.2.10"
 composeBom = "2026.03.00"
 coreKtx = "1.18.0"

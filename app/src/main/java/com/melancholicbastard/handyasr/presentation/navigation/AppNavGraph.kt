@@ -141,13 +141,13 @@ private fun NavGraphBuilder.composableForEditorScreen(
             factory = EditViewModelFactory(
                 isNewRecord = isNew,
                 entity = entity,
-                onNodeSaved = onSaved
+                onNodeSaved = onSaved,
+                onBackClick = onBack
             )
         )
         EditorScreen(
             viewModel = editViewModel,
-            bottomPadding = bottomPadding,
-            onBackClick = onBack
+            bottomPadding = bottomPadding
         )
     }
 }

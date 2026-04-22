@@ -9,10 +9,13 @@ import com.melancholicbastard.handyasr.data.remote.DecodeApi
 import com.melancholicbastard.handyasr.data.remote.RetrofitDecodeRepository
 import com.melancholicbastard.handyasr.domain.decode.DecodeAudioUseCase
 import com.melancholicbastard.handyasr.domain.node.usecases.AddNodeUseCase
+import com.melancholicbastard.handyasr.domain.node.usecases.DeleteAllNodesUseCase
 import com.melancholicbastard.handyasr.domain.node.usecases.DeleteNodeByIdUseCase
-import com.melancholicbastard.handyasr.domain.node.usecases.GetNodesByDateUseCase
-import com.melancholicbastard.handyasr.domain.node.usecases.SearchNodesByTextOrTitleUseCase
+import com.melancholicbastard.handyasr.domain.node.usecases.GetAllNodesUseCase
+import com.melancholicbastard.handyasr.domain.node.usecases.GetNodeByIdUseCase
+import com.melancholicbastard.handyasr.domain.node.usecases.SearchNodesByUseCase
 import com.melancholicbastard.handyasr.domain.node.usecases.UpdateNodeUseCase
+import com.melancholicbastard.handyasr.presentation.App
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -77,12 +80,20 @@ class AppContainer(
         DeleteNodeByIdUseCase(nodeRepository)
     }
 
-    val getNodesByDateUseCase: GetNodesByDateUseCase by lazy {
-        GetNodesByDateUseCase(nodeRepository)
+    val searchNodesByUseCase: SearchNodesByUseCase by lazy {
+        SearchNodesByUseCase(nodeRepository)
     }
 
-    val searchNodesByTextOrTitleUseCase: SearchNodesByTextOrTitleUseCase by lazy {
-        SearchNodesByTextOrTitleUseCase(nodeRepository)
+    val getNodeByIdUseCase: GetNodeByIdUseCase by lazy {
+        GetNodeByIdUseCase(nodeRepository)
+    }
+
+    val deleteAllNodesUseCase: DeleteAllNodesUseCase by lazy {
+        DeleteAllNodesUseCase(nodeRepository, App.recordingsDir)
+    }
+
+    val getAllNodesUseCase: GetAllNodesUseCase by lazy {
+        GetAllNodesUseCase(nodeRepository)
     }
 
     private fun normalizeBaseUrl(baseUrl: String): String {

@@ -6,6 +6,12 @@ interface NodeRepository {
     suspend fun addNode(node: Node): Long
     suspend fun updateNode(node: Node)
     suspend fun deleteNodeById(id: Long)
-    fun getNodesByDateDesc(): Flow<List<Node>>
-    fun searchNodesByTextOrTitle(query: String): Flow<List<Node>>
+    suspend fun deleteAllNodes()
+    suspend fun getNodeById(id: Long): Node?
+    fun searchNodesBy(
+        startTimestamp: Long?,
+        endTimestamp: Long?,
+        query: String?
+    ): Flow<List<Node>>
+    fun getAllNodes(): Flow<List<Node>>
 }

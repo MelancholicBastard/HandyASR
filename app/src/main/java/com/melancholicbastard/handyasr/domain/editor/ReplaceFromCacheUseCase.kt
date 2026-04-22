@@ -5,7 +5,7 @@ import java.io.File
 class ReplaceFromCacheUseCase(
     private val replaceFromCache : ReplaceFromCache
 ) {
-    suspend operator fun invoke(file: File) {
-        replaceFromCache.replaceToPersistentStorage(file)
+    suspend operator fun invoke(file: File): File {
+        return replaceFromCache.replaceToPersistentStorage(file)
     }
 }

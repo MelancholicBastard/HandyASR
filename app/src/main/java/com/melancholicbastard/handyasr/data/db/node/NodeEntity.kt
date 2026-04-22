@@ -2,9 +2,13 @@ package com.melancholicbastard.handyasr.data.db.node
 
 import androidx.room.ColumnInfo
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
-@Entity(tableName = "nodes")
+@Entity(
+    tableName = "nodes",
+    indices = [Index(value = ["created_at"])]
+)
 data class NodeEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
