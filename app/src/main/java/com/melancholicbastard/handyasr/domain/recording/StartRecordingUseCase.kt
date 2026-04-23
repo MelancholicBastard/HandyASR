@@ -1,6 +1,8 @@
 package com.melancholicbastard.handyasr.domain.recording
 
-class StartRecordingUseCase(
+import javax.inject.Inject
+
+class StartRecordingUseCase @Inject constructor(
     private val startRecording: StartRecording
 ) {
     suspend operator fun invoke() {

@@ -3,8 +3,9 @@ package com.melancholicbastard.handyasr.domain.node.usecases
 import android.util.Log
 import com.melancholicbastard.handyasr.domain.node.NodeRepository
 import java.io.File
+import javax.inject.Inject
 
-class DeleteNodeByIdUseCase(
+class DeleteNodeByIdUseCase @Inject constructor(
     private val nodeRepository: NodeRepository
 ) {
     companion object {

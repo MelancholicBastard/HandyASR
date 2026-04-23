@@ -1,14 +1,17 @@
 package com.melancholicbastard.handyasr.presentation.service
 
 import android.content.Intent
+import android.content.Context
 import androidx.core.content.ContextCompat
 import com.melancholicbastard.handyasr.domain.recordingcontrol.RecordingCommand
 import com.melancholicbastard.handyasr.domain.recordingcontrol.RecordingCommandSender
-import com.melancholicbastard.handyasr.presentation.App
+import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
 
-class AndroidRecordingServiceCommandSender : RecordingCommandSender {
+class AndroidRecordingServiceCommandSender @Inject constructor(
+	@param:ApplicationContext private val appContext: Context
+) : RecordingCommandSender {
 	override fun send(command: RecordingCommand) {
-		val appContext = App.instance.applicationContext
 		val action = when (command) {
 			RecordingCommand.START -> RecordingService.ACTION_START
 			RecordingCommand.PAUSE -> RecordingService.ACTION_PAUSE

@@ -15,11 +15,11 @@ import com.melancholicbastard.handyasr.domain.node.usecases.GetAllNodesUseCase
 import com.melancholicbastard.handyasr.domain.node.usecases.GetNodeByIdUseCase
 import com.melancholicbastard.handyasr.domain.node.usecases.SearchNodesByUseCase
 import com.melancholicbastard.handyasr.domain.node.usecases.UpdateNodeUseCase
-import com.melancholicbastard.handyasr.presentation.App
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
+import java.io.File
 import java.util.concurrent.TimeUnit
 
 class AppContainer(
@@ -89,7 +89,7 @@ class AppContainer(
     }
 
     val deleteAllNodesUseCase: DeleteAllNodesUseCase by lazy {
-        DeleteAllNodesUseCase(nodeRepository, App.recordingsDir)
+        DeleteAllNodesUseCase(nodeRepository, File(context.filesDir, "recordings").apply { mkdirs() })
     }
 
     val getAllNodesUseCase: GetAllNodesUseCase by lazy {

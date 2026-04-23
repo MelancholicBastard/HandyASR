@@ -2,11 +2,14 @@ package com.melancholicbastard.handyasr.data.editor
 
 import android.util.Log
 import com.melancholicbastard.handyasr.domain.editor.ReplaceFromCache
+import com.melancholicbastard.handyasr.presentation.di.annotation.RecordingsDir
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
+import javax.inject.Inject
 
-class AndroidReplaceFromCache(
+class AndroidReplaceFromCache @Inject constructor(
+    @param:RecordingsDir
     private val recordingsDir: File
 ) : ReplaceFromCache {
     companion object {

@@ -3,6 +3,7 @@ package com.melancholicbastard.handyasr.presentation.viewmodel
 import android.media.AudioAttributes
 import android.media.MediaPlayer
 import android.util.Log
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.melancholicbastard.handyasr.domain.decode.DecodeAudioUseCase
@@ -13,29 +14,33 @@ import com.melancholicbastard.handyasr.domain.node.Node
 import com.melancholicbastard.handyasr.domain.node.usecases.AddNodeUseCase
 import com.melancholicbastard.handyasr.domain.node.usecases.GetNodeByIdUseCase
 import com.melancholicbastard.handyasr.domain.node.usecases.UpdateNodeUseCase
+import com.melancholicbastard.handyasr.presentation.screen.EditorRoutes
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.io.File
 import java.io.IOException
+import javax.inject.Inject
 
-class EditViewModel(
-    entity: String,
-    private val isNewRecord: Boolean,
+@HiltViewModel
+class EditViewModel @Inject constructor(
+    savedStateHandle: SavedStateHandle,
     private val replaceFromCache: ReplaceFromCacheUseCase,
     private val deleteFromCache: DeleteFromCacheUseCase,
     private val decodeAudioUseCase: DecodeAudioUseCase,
     private val addNodeUseCase: AddNodeUseCase,
     private val updateNodeUseCase: UpdateNodeUseCase,
-    private val getNodeByIdUseCase: GetNodeByIdUseCase,
-    private val onNodeSaved: () -> Unit,
-    private val onBackClick: () -> Unit
+    private val getNodeByIdUseCase: GetNodeByIdUseCase
 ) : ViewModel() {
     companion object {
         private const val TAG = "EditViewModel"
@@ -44,6 +49,8 @@ class EditViewModel(
     private var audioFile: File? = null
     private var shouldCleanupTempFileOnClear: Boolean = true
     private var nodeToUpdate: Node? = null
+    private val isNewRecord = savedStateHandle.get<Boolean>(EditorRoutes.IS_NEW_ARG) ?: true
+    private val entity = savedStateHandle.get<String>(EditorRoutes.ENTITY_KEY).orEmpty()
 
     private var mediaPlayer: MediaPlayer? = null
     private val _playerUiState = MutableStateFlow(PlayerUiState())
@@ -60,6 +67,9 @@ class EditViewModel(
 
     private val _isSaving = MutableStateFlow(false)
     val isSaving: StateFlow<Boolean> = _isSaving.asStateFlow()
+
+    private val _navigationEvents = MutableSharedFlow<EditNavigationEvent>(replay = 0)
+    val navigationEvents: SharedFlow<EditNavigationEvent> = _navigationEvents.asSharedFlow()
 
     private val cleanupScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -193,7 +203,7 @@ class EditViewModel(
                     Log.d(TAG, "Updated node: $nodeToUpdate")
                 }
 
-                onNodeSaved()
+                _navigationEvents.emit(EditNavigationEvent.NodeSaved)
             } catch (t: Throwable) {
                 Log.e(TAG, "failed to save node", t)
                 _playerUiState.value = _playerUiState.value.copy(
@@ -328,7 +338,9 @@ class EditViewModel(
         if (shouldCleanupTempFileOnClear && audioFile != null && audioFile!!.exists()) {
             cleanupScope.launch { deleteFromCache(audioFile!!) }
         }
-        onBackClick()
+        viewModelScope.launch {
+            _navigationEvents.emit(EditNavigationEvent.Back)
+        }
     }
 
     override fun onCleared() {
@@ -338,6 +350,11 @@ class EditViewModel(
         super.onCleared()
         releasePlayer()
     }
+}
+
+sealed class EditNavigationEvent {
+    object NodeSaved : EditNavigationEvent()
+    object Back : EditNavigationEvent()
 }
 
 data class PlayerUiState(

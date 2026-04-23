@@ -5,10 +5,9 @@ import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
 import android.util.Log
-import com.melancholicbastard.handyasr.data.permission.AndroidMicrophonePermissionChecker
 import com.melancholicbastard.handyasr.domain.AudioRecorderManager
 import com.melancholicbastard.handyasr.domain.permission.MicrophonePermissionCheckUseCase
-import com.melancholicbastard.handyasr.presentation.App
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -20,13 +19,19 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
 import java.io.RandomAccessFile
+import javax.inject.Inject
+import javax.inject.Singleton
 
-object AndroidAudioRecorderManager : AudioRecorderManager {
-    private const val TAG = "AudioRecManager"
+@Singleton
+class AndroidAudioRecorderManager @Inject constructor(
+    @param:ApplicationContext private val appContext: Context,
+    private val microphonePermissionChecker: MicrophonePermissionCheckUseCase
+) : AudioRecorderManager {
+    companion object {
+        private const val TAG = "AudioRecManager"
+    }
+
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-    private val microphonePermissionCheckUseCase = MicrophonePermissionCheckUseCase(
-        AndroidMicrophonePermissionChecker(App.instance)
-    )
 
     private var audioRecorder: AudioRecord? = null
     private var audioFile: File? = null
@@ -37,18 +42,17 @@ object AndroidAudioRecorderManager : AudioRecorderManager {
     private var isRecording: Boolean = false
 
     override suspend fun startAudioRecording() {
-        if (!microphonePermissionCheckUseCase()) {
+        if (!microphonePermissionChecker()) {
             Log.e(TAG, "Audio recording permission not granted")
             return
         }
         try {
-            val context = App.instance
             withContext(Dispatchers.IO) {
-                clearCacheRecordFiles(context)
+                clearCacheRecordFiles(appContext)
             }
 
             val tmp = withContext(Dispatchers.IO) {
-                File.createTempFile("handyasr_record_", ".wav", context.cacheDir)
+                File.createTempFile("handyasr_record_", ".wav", appContext.cacheDir)
             }
             audioFile = tmp
 

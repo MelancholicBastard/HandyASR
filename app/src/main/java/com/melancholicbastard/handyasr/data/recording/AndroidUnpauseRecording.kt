@@ -1,12 +1,16 @@
 package com.melancholicbastard.handyasr.data.recording
 
-import com.melancholicbastard.handyasr.data.AndroidAudioRecorderManager
+import com.melancholicbastard.handyasr.domain.AudioRecorderManager
 import com.melancholicbastard.handyasr.domain.recording.UnpauseRecording
-import com.melancholicbastard.handyasr.presentation.AndroidTimerManager
+import com.melancholicbastard.handyasr.domain.TimerManager
+import javax.inject.Inject
 
-class AndroidUnpauseRecording : UnpauseRecording {
+class AndroidUnpauseRecording @Inject constructor(
+    private val timerManager: TimerManager,
+    private val audioRecorderManager: AudioRecorderManager
+) : UnpauseRecording {
     override fun unpause() {
-        AndroidTimerManager.resumeTimer()
-        AndroidAudioRecorderManager.resumeAudioRecording()
+        timerManager.resumeTimer()
+        audioRecorderManager.resumeAudioRecording()
     }
 }

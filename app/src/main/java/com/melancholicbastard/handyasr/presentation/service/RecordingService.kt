@@ -12,11 +12,6 @@ import android.util.Log
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.core.app.NotificationCompat
-import com.melancholicbastard.handyasr.data.recording.AndroidAcceptRecording
-import com.melancholicbastard.handyasr.data.recording.AndroidPauseRecording
-import com.melancholicbastard.handyasr.data.recording.AndroidRejectRecording
-import com.melancholicbastard.handyasr.data.recording.AndroidStartRecording
-import com.melancholicbastard.handyasr.data.recording.AndroidUnpauseRecording
 import com.melancholicbastard.handyasr.domain.recording.AcceptRecordingUseCase
 import com.melancholicbastard.handyasr.domain.recording.PauseRecordingUseCase
 import com.melancholicbastard.handyasr.domain.recording.RejectRecordingUseCase
@@ -24,6 +19,7 @@ import com.melancholicbastard.handyasr.domain.recording.StartRecordingUseCase
 import com.melancholicbastard.handyasr.domain.recording.UnpauseRecordingUseCase
 import com.melancholicbastard.handyasr.domain.recordingcontrol.RecordingRuntimeState
 import com.melancholicbastard.handyasr.presentation.AndroidTimerManager
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -32,24 +28,10 @@ import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-class RecordingService(
-    private val startRecUseCase: StartRecordingUseCase = StartRecordingUseCase(
-        AndroidStartRecording()
-    ),
-    private val pauseRecUseCase: PauseRecordingUseCase = PauseRecordingUseCase(
-        AndroidPauseRecording()
-    ),
-    private val unpauseRecUseCase: UnpauseRecordingUseCase = UnpauseRecordingUseCase(
-        AndroidUnpauseRecording()
-    ),
-    private val rejectRecUseCase: RejectRecordingUseCase = RejectRecordingUseCase(
-        AndroidRejectRecording()
-    ),
-    private val acceptRecUseCase: AcceptRecordingUseCase = AcceptRecordingUseCase(
-        AndroidAcceptRecording()
-    )
-) : Service() {
+@AndroidEntryPoint
+class RecordingService : Service() {
     companion object {
         private const val TAG = "RecordingService"
         const val CHANNEL_ID = "recording_channel"
@@ -67,6 +49,27 @@ class RecordingService(
     }
     private lateinit var notificationBuilder: NotificationCompat.Builder
     private var elapsedCollectorJob: Job? = null
+
+    @Inject
+    lateinit var startRecUseCase: StartRecordingUseCase
+
+    @Inject
+    lateinit var pauseRecUseCase: PauseRecordingUseCase
+
+    @Inject
+    lateinit var unpauseRecUseCase: UnpauseRecordingUseCase
+
+    @Inject
+    lateinit var rejectRecUseCase: RejectRecordingUseCase
+
+    @Inject
+    lateinit var acceptRecUseCase: AcceptRecordingUseCase
+
+    @Inject
+    lateinit var recordingServiceBridge: RecordingServiceBridge
+
+    @Inject
+    lateinit var timerManager: AndroidTimerManager
 
     override fun onBind(intent: Intent?) = null
 
@@ -98,7 +101,7 @@ class RecordingService(
             runCatching { acceptRecUseCase() }
                 .onSuccess { file ->
                     Log.d(TAG, "Accepted file: ${file}")
-                    RecordingServiceBridge.updateResult(file)
+                    recordingServiceBridge.updateResult(file)
                     stopServiceAndResetState()
                 }
                 .onFailure { throwable ->
@@ -147,7 +150,7 @@ class RecordingService(
 
         elapsedCollectorJob?.cancel()
         elapsedCollectorJob = scope.launch {
-            AndroidTimerManager.elapsedMs
+            timerManager.elapsedMs
                 .map { time ->
                     val seconds = (time / 1000) % 60
                     val minutes = time / 60_000
@@ -172,7 +175,7 @@ class RecordingService(
     }
 
     private fun updateRuntimeState(newState: RecordingRuntimeState) {
-        scope.launch { RecordingServiceBridge.updateState(newState) }
+        scope.launch { recordingServiceBridge.updateState(newState) }
     }
 
     private fun startForegroundService() {

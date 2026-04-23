@@ -1,6 +1,5 @@
 package com.melancholicbastard.handyasr.presentation.viewmodel
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.melancholicbastard.handyasr.domain.node.Node
@@ -8,31 +7,35 @@ import com.melancholicbastard.handyasr.domain.node.usecases.DeleteAllNodesUseCas
 import com.melancholicbastard.handyasr.domain.node.usecases.DeleteNodeByIdUseCase
 import com.melancholicbastard.handyasr.domain.node.usecases.GetAllNodesUseCase
 import com.melancholicbastard.handyasr.domain.node.usecases.SearchNodesByUseCase
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.onCompletion
-import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.util.Calendar
 import java.util.Date
 import java.util.TimeZone
+import javax.inject.Inject
 
-class HistoryViewModel(
+@HiltViewModel
+class HistoryViewModel @Inject constructor(
     private val searchNodesByUseCase: SearchNodesByUseCase,
     private val deleteNodeByIdUseCase: DeleteNodeByIdUseCase,
     private val deleteAllNodesUseCase: DeleteAllNodesUseCase,
-    private val getAllNodesUseCase: GetAllNodesUseCase,
-    val onOpenEditorForExistingRecord: (String) -> Unit
+    private val getAllNodesUseCase: GetAllNodesUseCase
 ) : ViewModel() {
+
+    private val _navigationEvents = MutableSharedFlow<HistoryNavigationEvent>(replay = 0)
+    val navigationEvents: SharedFlow<HistoryNavigationEvent> = _navigationEvents
 
     @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
     private fun nodeSourceFlow() = combine(
@@ -87,7 +90,9 @@ class HistoryViewModel(
     }
 
     fun openNode(node: Node) {
-        onOpenEditorForExistingRecord(node.id.toString())
+        viewModelScope.launch {
+            _navigationEvents.emit(HistoryNavigationEvent.OpenEditorForExistingRecord(node.id.toString()))
+        }
     }
 
     fun clearAllRecords() {
@@ -112,4 +117,8 @@ class HistoryViewModel(
 
         return start to end
     }
+}
+
+sealed class HistoryNavigationEvent {
+    data class OpenEditorForExistingRecord(val recordId: String) : HistoryNavigationEvent()
 }

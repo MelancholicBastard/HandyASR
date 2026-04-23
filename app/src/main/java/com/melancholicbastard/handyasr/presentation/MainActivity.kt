@@ -17,7 +17,9 @@ import com.melancholicbastard.handyasr.presentation.navigation.NavBackHandler
 import com.melancholicbastard.handyasr.presentation.navigation.NavBottomBar
 import com.melancholicbastard.handyasr.presentation.screen.TabScreen
 import com.melancholicbastard.handyasr.presentation.ui.HandyASRTheme
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

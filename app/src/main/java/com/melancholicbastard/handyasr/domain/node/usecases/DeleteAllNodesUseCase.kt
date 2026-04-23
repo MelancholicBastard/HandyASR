@@ -2,10 +2,13 @@ package com.melancholicbastard.handyasr.domain.node.usecases
 
 import android.util.Log
 import com.melancholicbastard.handyasr.domain.node.NodeRepository
+import com.melancholicbastard.handyasr.presentation.di.annotation.RecordingsDir
 import java.io.File
+import javax.inject.Inject
 
-class DeleteAllNodesUseCase(
+class DeleteAllNodesUseCase @Inject constructor(
     private val repository: NodeRepository,
+    @param:RecordingsDir
     private val recordingsDir: File
 ) {
     companion object {

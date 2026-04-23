@@ -4,8 +4,9 @@ import com.melancholicbastard.handyasr.domain.node.Node
 import com.melancholicbastard.handyasr.domain.node.NodeRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import javax.inject.Inject
 
-class RoomNodeRepository(
+class RoomNodeRepository @Inject constructor(
     private val nodeDao: NodeDao
 ) : NodeRepository {
 

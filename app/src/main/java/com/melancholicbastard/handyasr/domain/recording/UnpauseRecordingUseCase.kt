@@ -1,6 +1,8 @@
 package com.melancholicbastard.handyasr.domain.recording
 
-class UnpauseRecordingUseCase(
+import javax.inject.Inject
+
+class UnpauseRecordingUseCase @Inject constructor(
     private val unpauseRecording: UnpauseRecording
 ) {
     operator fun invoke() {
