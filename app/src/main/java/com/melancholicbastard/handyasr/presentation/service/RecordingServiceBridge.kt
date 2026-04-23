@@ -6,8 +6,11 @@ import com.melancholicbastard.handyasr.domain.recordingcontrol.RecordingStatePro
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import javax.inject.Inject
+import javax.inject.Singleton
 
-object RecordingServiceBridge : RecordingStateProvider, RecordingResultProvider {
+@Singleton
+class RecordingServiceBridge @Inject constructor() : RecordingStateProvider, RecordingResultProvider {
     private val _state = MutableSharedFlow<RecordingRuntimeState>(replay = 0)
     override val state: SharedFlow<RecordingRuntimeState> = _state.asSharedFlow()
 

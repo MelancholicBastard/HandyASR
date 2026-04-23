@@ -5,8 +5,9 @@ import com.melancholicbastard.handyasr.domain.editor.DeleteFromCache
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
+import javax.inject.Inject
 
-class AndroidDeleteFromCache : DeleteFromCache {
+class AndroidDeleteFromCache @Inject constructor() : DeleteFromCache {
     companion object {
         private const val TAG = "AndroidDeleteFromCache"
     }

@@ -3,40 +3,57 @@ package com.melancholicbastard.handyasr.presentation.viewmodel
 import android.media.AudioAttributes
 import android.media.MediaPlayer
 import android.util.Log
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.melancholicbastard.handyasr.domain.decode.DecodeAudioUseCase
 import com.melancholicbastard.handyasr.domain.decode.DecodeResult
 import com.melancholicbastard.handyasr.domain.editor.DeleteFromCacheUseCase
 import com.melancholicbastard.handyasr.domain.editor.ReplaceFromCacheUseCase
+import com.melancholicbastard.handyasr.domain.node.Node
+import com.melancholicbastard.handyasr.domain.node.usecases.AddNodeUseCase
+import com.melancholicbastard.handyasr.domain.node.usecases.GetNodeByIdUseCase
+import com.melancholicbastard.handyasr.domain.node.usecases.UpdateNodeUseCase
+import com.melancholicbastard.handyasr.presentation.screen.EditorRoutes
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.io.File
 import java.io.IOException
+import javax.inject.Inject
 
-class EditViewModel(
-    private val isNewRecord: Boolean,
-    private val entity: String,
+@HiltViewModel
+class EditViewModel @Inject constructor(
+    savedStateHandle: SavedStateHandle,
     private val replaceFromCache: ReplaceFromCacheUseCase,
     private val deleteFromCache: DeleteFromCacheUseCase,
-    private val decodeAudioUseCase: DecodeAudioUseCase
+    private val decodeAudioUseCase: DecodeAudioUseCase,
+    private val addNodeUseCase: AddNodeUseCase,
+    private val updateNodeUseCase: UpdateNodeUseCase,
+    private val getNodeByIdUseCase: GetNodeByIdUseCase
 ) : ViewModel() {
     companion object {
         private const val TAG = "EditViewModel"
     }
 
     private var audioFile: File? = null
+    private var shouldCleanupTempFileOnClear: Boolean = true
+    private var nodeToUpdate: Node? = null
+    private val isNewRecord = savedStateHandle.get<Boolean>(EditorRoutes.IS_NEW_ARG) ?: true
+    private val entity = savedStateHandle.get<String>(EditorRoutes.ENTITY_KEY).orEmpty()
 
     private var mediaPlayer: MediaPlayer? = null
     private val _playerUiState = MutableStateFlow(PlayerUiState())
-
     val playerUiState: StateFlow<PlayerUiState> = _playerUiState.asStateFlow()
 
     private val _title = MutableStateFlow("")
@@ -47,6 +64,63 @@ class EditViewModel(
 
     private val _text = MutableStateFlow("")
     val text: StateFlow<String> = _text.asStateFlow()
+
+    private val _isSaving = MutableStateFlow(false)
+    val isSaving: StateFlow<Boolean> = _isSaving.asStateFlow()
+
+    private val _navigationEvents = MutableSharedFlow<EditNavigationEvent>(replay = 0)
+    val navigationEvents: SharedFlow<EditNavigationEvent> = _navigationEvents.asSharedFlow()
+
+    private val cleanupScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    init {
+        if (isNewRecord) {
+            audioFile = File(entity)
+            if (audioFile?.exists() == true) {
+                preparePlayerFromFile()
+            } else {
+                _playerUiState.value = _playerUiState.value.copy(
+                    isLoading = false,
+                    error = "Audio file not found: ${audioFile?.absolutePath}"
+                )
+            }
+        } else {
+            val nodeId = entity.toLongOrNull()
+            if (nodeId == null) {
+                _playerUiState.value = _playerUiState.value.copy(
+                    error = "Некорректный id записи: $entity"
+                )
+            } else {
+                viewModelScope.launch {
+                    val node = getNodeByIdUseCase(nodeId)
+                    if (node == null) {
+                        _playerUiState.value = _playerUiState.value.copy(
+                            error = "Запись с id=$nodeId не найдена"
+                        )
+                        return@launch
+                    }
+                    nodeToUpdate = node
+
+                    _title.value = node.title
+                    _text.value = node.text.orEmpty()
+                    _textUiState.value = if (node.text.isNullOrBlank()) {
+                        TextUiState.UndefinedTextState
+                    } else {
+                        TextUiState.DefinedTextState
+                    }
+                    audioFile = File(node.audioFileName)
+                    shouldCleanupTempFileOnClear = false
+                    if (audioFile?.exists() == true) {
+                        preparePlayerFromFile()
+                    } else {
+                        _playerUiState.value = _playerUiState.value.copy(
+                            error = "Аудиофайл не найден: ${audioFile?.absolutePath}"
+                        )
+                    }
+                }
+            }
+        }
+    }
 
     fun setTitle(value: String) {
         _title.value = value
@@ -84,21 +158,60 @@ class EditViewModel(
         }
     }
 
-    private val cleanupScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    fun saveNode() {
+        if (_isSaving.value) return
+        val sourceFile = audioFile
+        if (sourceFile == null || !sourceFile.exists()) {
+            _playerUiState.value = _playerUiState.value.copy(error = "Аудиофайл не найден")
+            return
+        }
 
-    init {
-        if (isNewRecord) {
-            audioFile = File(entity)
-            if (audioFile?.exists() == true) {
-                preparePlayerFromFile()
-            } else {
+        viewModelScope.launch {
+            _isSaving.value = true
+            try {
+                val persistentFile = if (isNewRecord) {
+                    val copied = replaceFromCache(sourceFile)
+                    deleteFromCache(sourceFile)
+                    shouldCleanupTempFileOnClear = false
+                    copied
+                } else {
+                    sourceFile
+                }
+
+                if (isNewRecord) {
+                    val nodeToSave = Node(
+                        title = _title.value.ifBlank { "новая запись" },
+                        text = _text.value.takeIf { it.isNotBlank() },
+                        createdAt = System.currentTimeMillis(),
+                        audioFileName = persistentFile.absolutePath
+                    )
+                    val newId = addNodeUseCase(nodeToSave)
+                    Log.d(TAG, "Created node: ${nodeToSave.copy(id = newId)}")
+                } else {
+                    if (nodeToUpdate == null) {
+                        Log.e(TAG, "Cannot update node: nodeToUpdate is null")
+                        _playerUiState.value = _playerUiState.value.copy(error = "Внутренняя ошибка: id записи не известен")
+                        return@launch
+                    }
+
+                    val nodeToUpdate = nodeToUpdate!!.copy(
+                        title = _title.value.ifBlank { "новая запись" },
+                        text = _text.value.takeIf { it.isNotBlank() }
+                    )
+
+                    updateNodeUseCase(nodeToUpdate)
+                    Log.d(TAG, "Updated node: $nodeToUpdate")
+                }
+
+                _navigationEvents.emit(EditNavigationEvent.NodeSaved)
+            } catch (t: Throwable) {
+                Log.e(TAG, "failed to save node", t)
                 _playerUiState.value = _playerUiState.value.copy(
-                    isLoading = false,
-                    error = "Audio file not found: ${audioFile?.absolutePath}"
+                    error = t.message
                 )
+            } finally {
+                _isSaving.value = false
             }
-        } else {
-            //
         }
     }
 
@@ -221,11 +334,27 @@ class EditViewModel(
         }
     }
 
+    fun onBackButtonPressed() {
+        if (shouldCleanupTempFileOnClear && audioFile != null && audioFile!!.exists()) {
+            cleanupScope.launch { deleteFromCache(audioFile!!) }
+        }
+        viewModelScope.launch {
+            _navigationEvents.emit(EditNavigationEvent.Back)
+        }
+    }
+
     override fun onCleared() {
-        if (audioFile != null) cleanupScope.launch { deleteFromCache(audioFile!!) }
+        if (shouldCleanupTempFileOnClear && audioFile != null && audioFile!!.exists()) {
+            cleanupScope.launch { deleteFromCache(audioFile!!) }
+        }
         super.onCleared()
         releasePlayer()
     }
+}
+
+sealed class EditNavigationEvent {
+    object NodeSaved : EditNavigationEvent()
+    object Back : EditNavigationEvent()
 }
 
 data class PlayerUiState(

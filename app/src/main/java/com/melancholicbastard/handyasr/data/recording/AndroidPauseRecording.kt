@@ -1,12 +1,16 @@
 package com.melancholicbastard.handyasr.data.recording
 
-import com.melancholicbastard.handyasr.data.AndroidAudioRecorderManager
+import com.melancholicbastard.handyasr.domain.AudioRecorderManager
 import com.melancholicbastard.handyasr.domain.recording.PauseRecording
-import com.melancholicbastard.handyasr.presentation.AndroidTimerManager
+import com.melancholicbastard.handyasr.domain.TimerManager
+import javax.inject.Inject
 
-class AndroidPauseRecording : PauseRecording {
+class AndroidPauseRecording @Inject constructor(
+    private val timerManager: TimerManager,
+    private val audioRecorderManager: AudioRecorderManager
+) : PauseRecording {
     override fun pause() {
-        AndroidTimerManager.pauseTimer()
-        AndroidAudioRecorderManager.pauseAudioRecording()
+        timerManager.pauseTimer()
+        audioRecorderManager.pauseAudioRecording()
     }
 }

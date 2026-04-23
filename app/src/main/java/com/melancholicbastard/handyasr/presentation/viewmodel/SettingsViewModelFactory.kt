@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModelProvider
 class SettingsViewModelFactory : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
 //        val appContext = App.instance.applicationContext
-        return SettingsViewModel() as T
+//        return SettingsViewModel() as T
+        throw UnsupportedOperationException("Use Hilt hiltViewModel() instead of SettingsViewModelFactory")
     }
 }

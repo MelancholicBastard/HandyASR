@@ -48,8 +48,7 @@ import java.util.concurrent.TimeUnit
 @Composable
 fun EditorScreen(
     viewModel: EditViewModel,
-    bottomPadding: Dp = 0.dp,
-    onBackClick: () -> Unit
+    bottomPadding: Dp = 0.dp
 ) {
     val playerUiState by viewModel.playerUiState.collectAsState()
     val textUiState by viewModel.textUiState.collectAsState()
@@ -95,11 +94,15 @@ fun EditorScreen(
                 val title by viewModel.title.collectAsState()
                 OutlinedTextField(
                     value = title,
-                    onValueChange = { viewModel.setTitle(it) },
+                    onValueChange = {
+                        val limited = if (it.length <= 30) it else it.take(30)
+                        viewModel.setTitle(limited)
+                    },
                     modifier = Modifier.fillMaxWidth(),
                     placeholder = {
                         Text(text = "новая запись")
-                    }
+                    },
+                    singleLine = true
                 )
             }
 
@@ -110,10 +113,7 @@ fun EditorScreen(
                 modifier = Modifier.padding(bottom = 16.dp)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    PlayerBubble(
-                        viewModel,
-                        onBackClick
-                    )
+                    PlayerBubble(viewModel)
                 }
             }
 

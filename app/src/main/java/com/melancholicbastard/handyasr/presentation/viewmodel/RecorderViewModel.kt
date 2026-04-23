@@ -9,6 +9,7 @@ import com.melancholicbastard.handyasr.domain.recordingcontrol.RecordingCommand
 import com.melancholicbastard.handyasr.domain.recordingcontrol.RecordingRuntimeState
 import com.melancholicbastard.handyasr.domain.recordingcontrol.SendRecordingCommandUseCase
 import com.melancholicbastard.handyasr.presentation.AndroidTimerManager
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -18,13 +19,15 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-class RecorderViewModel(
+@HiltViewModel
+class RecorderViewModel @Inject constructor(
     private val checkMicPermission: MicrophonePermissionCheckUseCase,
     private val observeRecordingState: ObserveRecordingStateUseCase,
     private val sendRecordingCommand: SendRecordingCommandUseCase,
     private val observeRecordingResult: ObserveRecordingResultUseCase,
-    private val onOpenEditorForNewRecord: (String) -> Unit
+    private val timerManager: AndroidTimerManager
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<RecordScreenUIState>(RecordScreenUIState.IdleUIState)
     val uiState: StateFlow<RecordScreenUIState> = _uiState.asStateFlow()
@@ -32,10 +35,10 @@ class RecorderViewModel(
     private val _requestForPermission = MutableSharedFlow<Unit>(replay = 0)
     val requestForPermission: SharedFlow<Unit> = _requestForPermission.asSharedFlow()
 
-    private val _audioFilePath = MutableStateFlow<String?>(null)
-    val audioFilePath: StateFlow<String?> = _audioFilePath.asStateFlow()
+    private val _navigationEvents = MutableSharedFlow<RecorderNavigationEvent>(replay = 0)
+    val navigationEvents: SharedFlow<RecorderNavigationEvent> = _navigationEvents.asSharedFlow()
 
-    val elapsedMs: StateFlow<Long> = AndroidTimerManager.elapsedMs
+    val elapsedMs: StateFlow<Long> = timerManager.elapsedMs
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
@@ -50,8 +53,7 @@ class RecorderViewModel(
         }
         viewModelScope.launch {
             observeRecordingResult().collect { filePath ->
-                _audioFilePath.value = filePath
-                onOpenEditorForNewRecord(filePath)
+                _navigationEvents.emit(RecorderNavigationEvent.OpenEditorForNewRecord(filePath))
             }
         }
     }
@@ -90,6 +92,10 @@ class RecorderViewModel(
             RecordingRuntimeState.ERROR -> RecordScreenUIState.IdleUIState
         }
     }
+}
+
+sealed class RecorderNavigationEvent {
+    data class OpenEditorForNewRecord(val filePath: String) : RecorderNavigationEvent()
 }
 
 sealed class RecordScreenUIState {

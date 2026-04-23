@@ -15,9 +15,11 @@ import androidx.navigation.compose.rememberNavController
 import com.melancholicbastard.handyasr.presentation.navigation.AppNavGraph
 import com.melancholicbastard.handyasr.presentation.navigation.NavBackHandler
 import com.melancholicbastard.handyasr.presentation.navigation.NavBottomBar
-import com.melancholicbastard.handyasr.presentation.screen.Screen
+import com.melancholicbastard.handyasr.presentation.screen.TabScreen
 import com.melancholicbastard.handyasr.presentation.ui.HandyASRTheme
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -25,9 +27,14 @@ class MainActivity : ComponentActivity() {
         val microphonePermissionLauncher = registerForActivityResult(
             ActivityResultContracts.RequestPermission()
         ) { granted ->
-            if (!granted) Toast.makeText(this, "Разрешение не было предоставлено", Toast.LENGTH_SHORT).show()
+            if (!granted) Toast.makeText(
+                this,
+                "Разрешение не было предоставлено",
+                Toast.LENGTH_SHORT
+            ).show()
         }
-        val requestPermission = { microphonePermissionLauncher.launch(Manifest.permission.RECORD_AUDIO) }
+        val requestPermission =
+            { microphonePermissionLauncher.launch(Manifest.permission.RECORD_AUDIO) }
 
         setContent {
             val navController = rememberNavController()
@@ -37,19 +44,20 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     bottomBar = { NavBottomBar(navController = navController) }
                 ) { innerPadding ->
-                    NavBackHandler(
-                        navController = navController,
-                        startRoute = Screen.Recorder.route,
-                        onExit = { moveTaskToBack(true) }
-                    )
-
                     AppNavGraph(
                         navController = navController,
                         modifier = Modifier.padding(innerPadding),
-                        startDestination = Screen.Recorder.route,
+                        startDestination = TabScreen.Recorder.graphRoute,
                         activity = this,
                         bottomPadding = innerPadding.calculateBottomPadding(),
                         requestPermission = requestPermission
+                    )
+
+                    NavBackHandler(
+                        navController = navController,
+                        startTabGraphRoute = TabScreen.Recorder.graphRoute,
+                        startTabScreenRoute = TabScreen.Recorder.route,
+                        onExit = { moveTaskToBack(true) }
                     )
                 }
             }
