@@ -1,5 +1,6 @@
 package com.melancholicbastard.handyasr.presentation.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.melancholicbastard.handyasr.domain.node.Node
@@ -9,6 +10,7 @@ import com.melancholicbastard.handyasr.domain.node.usecases.GetAllNodesUseCase
 import com.melancholicbastard.handyasr.domain.node.usecases.SearchNodesByUseCase
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -16,6 +18,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.onCompletion
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.util.Calendar
@@ -37,13 +41,19 @@ class HistoryViewModel(
     ) { query, dateMillis ->
         query to dateMillis
     }.flatMapLatest { (query, dateMillis) ->
-        if (dateMillis == null && query.isBlank()) {
-            getAllNodesUseCase()
-        } else {
-            val (start, end) = dateMillis?.let {
-                getTimestampsForDate(Date(it))
-            } ?: (null to null)
-            searchNodesByUseCase(start, end, query.trim())
+        _isLoadingNodes.value = true
+
+        try {
+            if (dateMillis == null && query.isBlank()) {
+                getAllNodesUseCase()
+            } else {
+                val (start, end) = dateMillis?.let {
+                    getTimestampsForDate(Date(it))
+                } ?: (null to null)
+                searchNodesByUseCase(start, end, query.trim())
+            }
+        } finally {
+            _isLoadingNodes.value = false
         }
     }
 
@@ -52,6 +62,9 @@ class HistoryViewModel(
 
     private val _selectedDateMillis = MutableStateFlow<Long?>(null)
     val selectedDateMillis: StateFlow<Long?> = _selectedDateMillis.asStateFlow()
+
+    private val _isLoadingNodes = MutableStateFlow(false)
+    val isLoadingNodes: StateFlow<Boolean> = _isLoadingNodes.asStateFlow()
 
     val nodes: StateFlow<List<Node>> = nodeSourceFlow().stateIn(
         scope = viewModelScope,

@@ -17,8 +17,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardReturn
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Forward5
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Replay5
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
@@ -140,7 +142,7 @@ fun PlayerContent(
         Row(horizontalArrangement = Arrangement.SpaceEvenly, modifier = Modifier.fillMaxWidth()) {
             IconButton(onClick = { skipBackward() }) {
                 Icon(
-                    imageVector = Icons.Default.ChevronLeft,
+                    imageVector = Icons.Default.Replay5,
                     contentDescription = "Skip backward"
                 )
             }
@@ -159,8 +161,8 @@ fun PlayerContent(
             }
             IconButton(onClick = { skipForward() }) {
                 Icon(
-                    imageVector = Icons.Default.ChevronRight,
-                    contentDescription = "Skip backward"
+                    imageVector = Icons.Default.Forward5,
+                    contentDescription = "Skip forward"
                 )
             }
         }

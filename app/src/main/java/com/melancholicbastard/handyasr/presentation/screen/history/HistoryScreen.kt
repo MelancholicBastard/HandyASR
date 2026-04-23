@@ -1,6 +1,7 @@
 package com.melancholicbastard.handyasr.presentation.screen.history
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,10 +19,16 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Replay
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -39,6 +46,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.google.android.material.datepicker.MaterialDatePicker
 import com.melancholicbastard.handyasr.presentation.ui.components.MyLargeCircularButton
 import com.melancholicbastard.handyasr.presentation.viewmodel.HistoryViewModel
 import java.text.SimpleDateFormat
@@ -46,10 +54,11 @@ import java.util.Date
 import java.util.Locale
 
 @Composable
-fun HistoryScreen(viewModel: HistoryViewModel ) {
+fun HistoryScreen(viewModel: HistoryViewModel) {
     val nodes by viewModel.nodes.collectAsState()
     val query by viewModel.searchQuery.collectAsState()
     val selectedDate by viewModel.selectedDateMillis.collectAsState()
+    val isLoading by viewModel.isLoadingNodes.collectAsState()
     var showDatePicker by remember { mutableStateOf(false) }
 
     val datePickerState = rememberDatePickerState(
@@ -62,27 +71,83 @@ fun HistoryScreen(viewModel: HistoryViewModel ) {
             .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        OutlinedTextField(
-            value = query,
-            onValueChange = viewModel::setSearchQuery,
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text("Поиск по title/text") },
-            singleLine = true
-        )
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+
+        Surface(
+            shape = RoundedCornerShape(6.dp),
+            color = MaterialTheme.colorScheme.onPrimary,
+            border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary),
         ) {
-            Button(onClick = { showDatePicker = true }) {
-                Text(selectedDate?.let { "Дата: ${formatDate(it)}" } ?: "Выбрать дату")
+            Column {
+                OutlinedTextField(
+                    value = query,
+                    onValueChange = viewModel::setSearchQuery,
+                    modifier = Modifier.fillMaxWidth(),
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.Search,
+                            contentDescription = "Search by text or title",
+                        )
+                    },
+                    placeholder = { Text("Введите текст или заголовок") },
+                    singleLine = true
+                )
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(8.dp),
+                    horizontalArrangement = Arrangement.SpaceAround,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Spacer(modifier = Modifier.weight(0.05f))
+                    Row(
+                        modifier = Modifier
+                            .weight(1f)
+                            .background(
+                                MaterialTheme.colorScheme.onPrimary,
+                                RoundedCornerShape(8.dp)
+                            )
+                            .clickable { showDatePicker = true },
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(text = selectedDate?.let { "Дата: ${formatDate(it)}" }
+                                ?: "Выбрать дату")
+
+                        IconButton(
+                            onClick = { showDatePicker = true },
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.DateRange,
+                                contentDescription = "Выбрать дату"
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.weight(0.05f))
+
+                    MyLargeCircularButton(
+                        onClick = {
+//                            viewModel.clearAllRecords()
+                            viewModel.setSelectedDate(null)
+                        },
+                        icon = Icons.Default.Replay,
+                        contentDescription = "Set null date",
+                        diameter = 36.dp,
+                    )
+
+                    Spacer(modifier = Modifier.weight(0.05f))
+                }
             }
-            Button(onClick = {
-//                viewModel.clearAllRecords()
-                viewModel.setSelectedDate(null)
-            }) {
-                Text("Сброс даты")
-            }
+        }
+
+        if (isLoading) {
+            LinearProgressIndicator(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(4.dp)
+            )
         }
 
         LazyColumn(
@@ -93,8 +158,9 @@ fun HistoryScreen(viewModel: HistoryViewModel ) {
 
                 Surface(
                     shape = RoundedCornerShape(12.dp),
-                    color = MaterialTheme.colorScheme.onPrimary,
-                    border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
+                    color = MaterialTheme.colorScheme.onSecondary,
+                    border = BorderStroke(2.dp, MaterialTheme.colorScheme.secondary),
+                    modifier = Modifier.clickable { viewModel.openNode(node) }
                 ) {
                     Box(
                         modifier = Modifier
@@ -104,7 +170,6 @@ fun HistoryScreen(viewModel: HistoryViewModel ) {
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(IntrinsicSize.Min)
-                                .clickable { viewModel.openNode(node) }
                                 .padding(8.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                         ) {
@@ -132,7 +197,8 @@ fun HistoryScreen(viewModel: HistoryViewModel ) {
                                     onClick = { viewModel.deleteNodeById(node.id) },
                                     icon = Icons.Default.Delete,
                                     contentDescription = "Delete one node",
-                                    diameter = 36.dp
+                                    diameter = 36.dp,
+                                    containerColor = MaterialTheme.colorScheme.secondary
                                 )
                                 Spacer(
                                     modifier = Modifier
@@ -182,4 +248,3 @@ private fun formatDate(millis: Long): String {
 private fun formatTime(millis: Long): String {
     return SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(millis))
 }
-
